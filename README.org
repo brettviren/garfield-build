@@ -1,0 +1,12 @@
+#+TITLE: Build GARFIELD with waf
+
+The [[http://garfield.web.cern.ch/garfield/][Garfield simulation of gaseous detectors]] is built with an archaic set of tools, CERNLIB and a lot of added chaos.  This package tries to automate the mess.
+
+* Installation
+
+Get the [[./wscript]] file and do:
+
+#+BEGIN_EXAMPLE
+$ waf configure build
+#+END_EXAMPLE
+

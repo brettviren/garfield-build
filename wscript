@@ -17,7 +17,6 @@ cradle_files = [
     'garfadd-8_linux.cra',
     'garfield-9_linux.cra',
     'garfadd-9_linux.cra',
-    'interface_amd64_linux26.cra',
 ]
 card_files = [
     'garfield-7.car',
@@ -26,6 +25,7 @@ card_files = [
     'magboltz-3.car',
     'magboltz-7.car',
 ]
+interface_file = 'interface_amd64_linux26.cra'
 
 
 #    help_input
@@ -66,11 +66,12 @@ def build(bld):
     bld.post_mode = Build.POST_LAZY
     fod = bld.path.find_or_declare
 
-    for f in cradle_files + card_files:
-        bld(rule = download, target = f, 
-            url_base = garfield_download_url, update_outputs = True)
+    do_downloads(bld, card_files)
+    do_downloads(bld, cradle_files, lambda f: f.replace('_linux.cra','.cra'))
+    do_downloads(bld, [interface_file], lambda f: 'interface.cra')
+        
     bld(rule = download, target = 'neBEMV1.8.13.tgz',
-        url_base = 'http://nebem.web.cern.ch/nebem/files/', update_outputs = True)
+        url = 'http://nebem.web.cern.ch/nebem/files/neBEMV1.8.13.tgz', update_outputs = True)
 
     bld(rule = 'tar -xf ${SRC[0].abspath()} && chmod -R +rwx V1.8.13/src/Devices/Iarocci',
         source = 'neBEMV1.8.13.tgz',
@@ -86,29 +87,29 @@ def build(bld):
         source = 'V1.8.13/Makefile',
         target = bemobj_paths)
 
-    # Rename linux-specific cradle files
-    # fixme: handle this during download
-    for n in range(7,10,1):
-        for what in ['garfield','garfadd']:
-            bld(rule='cp ${SRC} ${TGT}',
-                source = fod('%s-%d_linux.cra' % (what, n)),
-                target = fod('%s-%d.cra' % (what, n)))
-
-    #patchy_split(bld, 'garfield-9.cra garfield-7.car heed101garf.car magboltz-7.car')
-    patchy_split(bld, 'garfadd-9.cra garfield-7.car heed101garf.car magboltz-7.car')
+    garfieldlib = 'garfieldlib-9'
+    patchy_split(bld, garfieldlib, 
+                 'garfield-9.cra garfield-7.car heed101garf.car magboltz-7.car')
+    garfaddlib = 'garfaddlib-9'
+    patchy_split(bld, garfaddlib,
+                 'garfadd-9.cra garfield-7.car heed101garf.car magboltz-7.car')
+    garfintlib = 'garfintlib-9'
+    patchy_split(bld, garfintlib, 'interface.cra garfield-7.car')
 
     bld.add_group()
 
-    bld(features = 'find_source fc fcstlib', target = 'garfadd-9', source_glob='*.f')
+    bld(features = 'find_source fc fcstlib', target = garfieldlib, source_glob='*.f')
+    bld(features = 'find_source fc fcstlib', target = garfaddlib, source_glob='*.f')
+    bld(features = 'find_source fc fcstlib', target = garfintlib, source_glob='*.f')
 
-    # linkflags = bemobj_paths + bld.env.CERNLIBS.split()
+    linkflags = ['-std=c99'] + bemobj_paths + bld.env.CERNLIBS.split()
     # print 'LINKFLAGS',linkflags
-    # bld(features = 'fc fcprogram',
-    #     target   = 'garfield-9',
-    #     use = ['garfield-9.o','garfadd-9.o'],
-    #     stlibpath = 'V1.8.13/lib',
-    #     stlib = ['NR', 'Vector', 'Isles', 'gslcblas', 'gsl', 'm'],
-    #     linkflags = linkflags)
+    bld(features = 'fc fcprogram',
+        target   = 'garfield-9',
+        use = [garfieldlib, garfaddlib, garfintlib],
+        stlibpath = 'V1.8.13/lib',
+        stlib = ['NR', 'Vector', 'Isles', 'gslcblas', 'gsl', 'm'],
+        linkflags = linkflags)
     return
 
 # some helpers below
@@ -117,36 +118,38 @@ from waflib.TaskGen import feature, before
 @feature('find_source')
 @before('process_source')
 def find_generated_source_files(self):
-    work = self.path.get_bld().find_node('lib'+to_list(self.target)[0])
+    work = self.path.get_bld().find_node(to_list(self.target)[0])
     self.source = to_list(self.source) + work.ant_glob(self.source_glob)
 
 
 from waflib.Configure import urlopen
 def download(task):
     gen = task.generator
-    #bld = gen.bld
     tgt = task.outputs[0]
-    url = gen.url_base + str(tgt)
-    #print 'TASK:',gen,sorted(gen.__dict__.keys())
-    print 'Downloading %s' % url
-    web = urlopen(url)
+    print 'Downloading %s' % gen.url
+    web = urlopen(gen.url)
     assert web.getcode() == 200
     tgt.write(web.read(), 'wb')
 
+def do_downloads(bld, files, target_fun = lambda f: f):
+    for f in files:
+        o = target_fun(f)
+        bld(rule = download, target = o, url = garfield_download_url+f,
+            update_outputs = True)
 
 
 from waflib.Utils import to_list
 from waflib.Task import compile_fun
 
 def fcasplit(task):
-    cmd_fun, _ = compile_fun("${FCASPLIT} ${SRC[0].abspath()}")
+    cmd_fun, _ = compile_fun("${FCASPLIT} ${SRC[0].abspath()} > split.log 2>&1")
     rc = cmd_fun(task)
     if rc: return rc
     cwd = task.generator.bld.root.make_node(task.cwd)
     task.outputs = cwd.ant_glob('*.f')
 
 
-def patchy_split(bld, source):
+def patchy_split(bld, libname, source):
     source = to_list(source)
     name = source[0].replace('.cra','')
 
@@ -155,16 +158,18 @@ def patchy_split(bld, source):
     cmd = '${YPATCHY} - %s %s - - - - - - - - - :GO > patchy.log|| true' % (name,name)
     bld(rule = cmd, source = source, target = fortnode)
 
-    work = bld.path.get_bld().make_node('lib'+name)
+    work = bld.path.get_bld().make_node(libname)
     work.mkdir()
     split_out = work.find_or_declare(name+'.mkfca')
 
     bld(rule = fcasplit,
         source = fortnode, target = split_out, cwd = work.abspath())
-        
-    # bld(rule = generated_fclib,
-    #     source = split_out, 
-    #     libname = name, update_outputs=True)
+
+
+
+
+
+
 
 
 
