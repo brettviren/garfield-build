@@ -8,6 +8,21 @@ http://ubuntuforums.org/showthread.php?p=10195676#post10195676
 
 I find it amazing that such a messed up build system is still in use....
 
+To find some external packages one may set these environment variables
+(example are mooching off packages found on BNL's RACF):
+
+To find GSL
+
+  PKG_CONFIG_PATH=/afs/rhic.bnl.gov/opt/astro/SL64/lib/pkgconfig
+
+To find CERNLIB
+
+  CERN=/afs/rhic.bnl.gov/asis/x8664_sl5/cern64
+  CERN_LEVEL=pro
+
+or, make sure the "cernlib" script is in your PATH.
+
+
 '''
 garfield_download_url = 'http://cern.ch/rjd/Garfield/'
 cradle_files = [
@@ -32,6 +47,7 @@ interface_file = 'interface_amd64_linux26.cra'
 # http://nebem.web.cern.ch/nebem/files/neBEMV1.8.13.tgz
 # http://cern.ch/garfield/help/garfield.hlp
 
+import os
 import subprocess
 
 def options(opt):
@@ -41,12 +57,18 @@ def options(opt):
 def configure(cfg):
     cfg.load('compiler_fc')
     cfg.load('compiler_c')
-    cfg.find_program('ypatchy', var='YPATCHY')
-    cfg.find_program('fcasplit', var='FCASPLIT')
+
+    cernpath = os.environ['PATH'].split(':') +\
+        [os.path.expandvars("$CERN/$CERN_LEVEL/bin"), '/cern/pro/bin']
+    cfg.find_program('cernlib', var='CERNLIBSCRIPT', path_list=cernpath)
+    cfg.find_program('ypatchy', var='YPATCHY', path_list=cernpath)
+    cfg.find_program('fcasplit', var='FCASPLIT', path_list=cernpath)
 
     if cfg.env.FC_NAME == 'GFORTRAN':
         cfg.env['FCFLAGS'] = '-O3 -fbounds-check -fbackslash'.split()
 
+    cfg.check_cfg(package = 'gsl', args=['--cflags', '--libs'])
+    #print 'GSL:', cfg.env.LIB_GSL, cfg.env.LIBPATH_GSL
 
     cfg.check_fortran()
     cfg.check_fortran_verbose_flag()
@@ -54,9 +76,12 @@ def configure(cfg):
     cfg.check_fortran_dummy_main()
     cfg.check_fortran_mangling()
 
-    clibs = subprocess.check_output('cernlib graflib/X11,kernlib,mathlib,packlib', shell=True)
+    clibs = subprocess.Popen([cfg.env.CERNLIBSCRIPT, 'graflib/X11,kernlib,mathlib,packlib'],
+                             stdout=subprocess.PIPE).communicate()[0]
     cfg.env.CERNLIBS = clibs
-    print cfg.env.CERNLIBS
+#    print 'CERN:', cfg.env.CERNLIBS
+#    print cfg.env.LIB_CERN
+#    print cfg.env.LIBPATH_CERN
     return
 
 
