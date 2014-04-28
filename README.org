@@ -12,7 +12,7 @@ General:
 #+BEGIN_EXAMPLE
 $ git clone https://github.com/brettviren/garfield-build.git
 $ cd garfield-build/
-$ waf --version
+$ waf --version  # one time unpacking of waf
 $ waf configure build
 #+END_EXAMPLE
 
@@ -21,6 +21,9 @@ installed in various places using the provided =racf.sh" script.
 Clone as above and do:
 
 #+begin_example
+$ git clone https://github.com/brettviren/garfield-build.git
+$ cd garfield-build/
+$ ./racf.sh waf --version  # one time unpacking of waf
 $ ./racf.sh waf configure build
 $ ./racf.sh garfield-9
 #+end_example
