@@ -31,7 +31,7 @@ def configure(cfg):
 
     cernpath = os.environ['PATH'].split(':') +\
         [os.path.expandvars("$CERN/$CERN_LEVEL/bin"), '/cern/pro/bin']
-    cfg.find_program('cernlib', var='CERNLIBSCRIPT', path_list=cernpath)
+    #cfg.find_program('cernlib', var='CERNLIBSCRIPT', path_list=cernpath)
 
     if cfg.env.FC_NAME == 'GFORTRAN':
         cfg.env['FCFLAGS'] = '-O3 -fbounds-check -fbackslash'.split()
