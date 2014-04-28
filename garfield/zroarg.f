@@ -1,0 +1,110 @@
+CDECK  ID>, ZROARG.
+       FUNCTION ZROARG(P,ZXMIN,ZYMIN,ZXMAX,ZYMAX,INWIRE)
+       INTEGER MXWIRE,MXSW,MXLIST,MXCHA,MXGRID,MXMATT,MXPOLE,MX3D,
+     -         MXPSTR,
+     -         MXPAIR,MXPART,MXFOUR,MXCLUS,
+     -         MXLINE,MXEQUT,
+     -         MXRECL,MXINCH,MXWORD,MXCHAR,MXNAME,MXLUN,
+     -         MXINS,MXREG,MXARG,MXCONS,MXVAR,MXALGE,
+     -         MXZERO,MXSTCK,MXFPNT,MXFPAR,MXWKLS,
+     -         MXHLEV,MXHLRL,MXSUBT,
+     -         MXDLVL,MXILVL,MXDLIN,
+     -         MXHIST,MXFRAC,MXBANG,MXBTAB,
+     -         MXEXG,MXIOG,MXCSG,
+     -         MXORIA,
+     -         MXMAT,MXEMAT,MXMDIM,
+     -         MXSHOT,MXZPAR,
+     -         MXMAP,MXEPS,MXWMAP,MXSOLI,MXSBUF,
+     -         MXPLAN,MXPOIN,MXEDGE,
+     -         MXMCA
+       PARAMETER (MXWIRE=  2000,MXSW  =  200)
+       PARAMETER (MXMATT=    10)
+       PARAMETER (MX3D  =   100)
+       PARAMETER (MXPOLE=    10)
+       PARAMETER (MXPSTR=   100)
+       PARAMETER (MXLIST=  1000)
+       PARAMETER (MXHIST=   200, MXCHA = MXLIST/2)
+       PARAMETER (MXGRID=    50)
+       PARAMETER (MXNAME=   200, MXLUN =    30)
+       PARAMETER (MXCLUS=   500, MXPAIR=  2000, MXPART= 10000)
+       PARAMETER (MXLINE=   150, MXEQUT=    50)
+       PARAMETER (MXFOUR=    16)
+       PARAMETER (MXRECL= 10000)
+       PARAMETER (MXINCH=  2000, MXWORD=   200, MXCHAR=MXINCH)
+       PARAMETER (MXINS =  1000, MXREG =   500, MXCONS=  -500,
+     -            MXVAR =   500, MXALGE=   500, MXARG =   100)
+       PARAMETER (MXMAT =   500, MXEMAT=200000, MXMDIM=   10)
+       PARAMETER (MXZERO=MXWIRE)
+       PARAMETER (MXSTCK=     5)
+       PARAMETER (MXFPNT= 20000, MXFPAR=    10)
+       PARAMETER (MXWKLS=    10)
+       PARAMETER (MXHLEV=     9, MXSUBT=   200, MXHLRL=  860)
+       PARAMETER (MXDLVL=    10, MXILVL=    20, MXDLIN= 2500)
+       PARAMETER (MXFRAC=    13)
+       PARAMETER (MXBANG=    20, MXBTAB=    25)
+       PARAMETER (MXEXG =    50, MXIOG =    10, MXCSG =  200)
+       PARAMETER (MXORIA=  1000)
+       PARAMETER (MXSHOT=    10, MXZPAR=4*MXSHOT+2)
+       PARAMETER (MXMAP =350000,MXEPS =   10)
+       PARAMETER (MXWMAP=     5)
+       PARAMETER (MXSOLI=  1000)
+       PARAMETER (MXPLAN= 50000, MXPOIN=100000,MXEDGE=100)
+       PARAMETER (MXSBUF= 20000)
+       PARAMETER (MXMCA = 50000)
+*   The parameter MXNBMC must equal MXGNAM (sequence MAGBPARM) !
+       INTEGER MXNBMC
+       PARAMETER(MXNBMC=60)
+       LOGICAL ZROSET
+       REAL XZ,YZ,PZ,DPMIN,DPMAX,DAMIN,DAMAX,EMIN
+       INTEGER NZ,NFC
+       COMMON /ZRODAT/ XZ(MXZERO),YZ(MXZERO),PZ(MXZERO),NZ,NFC,
+     -                 DPMIN,DPMAX,DAMIN,DAMAX,EMIN,ZROSET
+       COMPLEX ICONS
+       REAL PI,CLOG2,EPS0,ECHARG,EMASS,CLIGHT,MEV2KG,BOLTZ,GRAV
+       PARAMETER (PI=3.141592653589793238,
+     -      CLOG2=0.693147180559945309417,
+     -      ICONS=(0.0,1.0),
+     -      EPS0=8.854187817E-14,
+     -      ECHARG=1.60217733E-19,
+     -      EMASS=9.1093897E-31,
+     -      GRAV=9.80665,
+     -      CLIGHT=2.99792458E4,
+     -      MEV2KG = 1.782661845E-30,
+     -      BOLTZ=1.380658E-23)
+       LOGICAL INWIRE
+*** Find the coordinates corresponding with P.
+       IF(P.GE.0.0.AND.P.LE.1.0)THEN
+            X=ZXMIN+ P     *(ZXMAX-ZXMIN)
+            Y=ZYMIN
+       ELSEIF(P.GT.1.0.AND.P.LE.2.0)THEN
+            X=ZXMAX
+            Y=ZYMIN+(P-1.0)*(ZYMAX-ZYMIN)
+       ELSEIF(P.GT.2.0.AND.P.LE.3.0)THEN
+            X=ZXMAX-(P-2.0)*(ZXMAX-ZXMIN)
+            Y=ZYMAX
+       ELSEIF(P.GT.3.0.AND.P.LE.4.0)THEN
+            X=ZXMIN
+            Y=ZYMAX-(P-3.0)*(ZYMAX-ZYMIN)
+       ELSE
+            ZROARG=0.0
+            INWIRE=.TRUE.
+            PRINT *,' ###### ZROARG ERROR   : Argument P out of range',
+     -              ' (program bug); probably no serious effect.'
+            RETURN
+       ENDIF
+*** Calculate the field at (X,Y) and set inwire.
+       INWIRE=.FALSE.
+       CALL EFIELD(X,Y,0.0,EX,EY,EZ,ETOT,VOLT,0,ILOC)
+       NFC=NFC+1
+       IF(ILOC.NE.0)THEN
+            ZROARG=0.0
+            INWIRE=.TRUE.
+            PRINT 1010,P,X,Y
+            RETURN
+       ENDIF
+*** Compute the argument.
+       ZROARG=ACOS(EX/ETOT)/(2.0*PI)
+       IF(EY.LT.0)ZROARG=1.0-ZROARG
+       PRINT 1010,P,X,Y,ZROARG
+1010   FORMAT(' P=',F10.3,'  (X,Y)=',2F10.3:' ARG=',F10.3)
+       END

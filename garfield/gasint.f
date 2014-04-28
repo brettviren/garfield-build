@@ -1,0 +1,368 @@
+CDECK  ID>, GASINT.
+       SUBROUTINE GASINT
+*-----------------------------------------------------------------------
+*   GASINT - Initialises the gas data.
+*   (Last changed on 10/ 4/08.)
+*-----------------------------------------------------------------------
+       implicit none
+       INTEGER MXWIRE,MXSW,MXLIST,MXCHA,MXGRID,MXMATT,MXPOLE,MX3D,
+     -         MXPSTR,
+     -         MXPAIR,MXPART,MXFOUR,MXCLUS,
+     -         MXLINE,MXEQUT,
+     -         MXRECL,MXINCH,MXWORD,MXCHAR,MXNAME,MXLUN,
+     -         MXINS,MXREG,MXARG,MXCONS,MXVAR,MXALGE,
+     -         MXZERO,MXSTCK,MXFPNT,MXFPAR,MXWKLS,
+     -         MXHLEV,MXHLRL,MXSUBT,
+     -         MXDLVL,MXILVL,MXDLIN,
+     -         MXHIST,MXFRAC,MXBANG,MXBTAB,
+     -         MXEXG,MXIOG,MXCSG,
+     -         MXORIA,
+     -         MXMAT,MXEMAT,MXMDIM,
+     -         MXSHOT,MXZPAR,
+     -         MXMAP,MXEPS,MXWMAP,MXSOLI,MXSBUF,
+     -         MXPLAN,MXPOIN,MXEDGE,
+     -         MXMCA
+       PARAMETER (MXWIRE=  2000,MXSW  =  200)
+       PARAMETER (MXMATT=    10)
+       PARAMETER (MX3D  =   100)
+       PARAMETER (MXPOLE=    10)
+       PARAMETER (MXPSTR=   100)
+       PARAMETER (MXLIST=  1000)
+       PARAMETER (MXHIST=   200, MXCHA = MXLIST/2)
+       PARAMETER (MXGRID=    50)
+       PARAMETER (MXNAME=   200, MXLUN =    30)
+       PARAMETER (MXCLUS=   500, MXPAIR=  2000, MXPART= 10000)
+       PARAMETER (MXLINE=   150, MXEQUT=    50)
+       PARAMETER (MXFOUR=    16)
+       PARAMETER (MXRECL= 10000)
+       PARAMETER (MXINCH=  2000, MXWORD=   200, MXCHAR=MXINCH)
+       PARAMETER (MXINS =  1000, MXREG =   500, MXCONS=  -500,
+     -            MXVAR =   500, MXALGE=   500, MXARG =   100)
+       PARAMETER (MXMAT =   500, MXEMAT=200000, MXMDIM=   10)
+       PARAMETER (MXZERO=MXWIRE)
+       PARAMETER (MXSTCK=     5)
+       PARAMETER (MXFPNT= 20000, MXFPAR=    10)
+       PARAMETER (MXWKLS=    10)
+       PARAMETER (MXHLEV=     9, MXSUBT=   200, MXHLRL=  860)
+       PARAMETER (MXDLVL=    10, MXILVL=    20, MXDLIN= 2500)
+       PARAMETER (MXFRAC=    13)
+       PARAMETER (MXBANG=    20, MXBTAB=    25)
+       PARAMETER (MXEXG =    50, MXIOG =    10, MXCSG =  200)
+       PARAMETER (MXORIA=  1000)
+       PARAMETER (MXSHOT=    10, MXZPAR=4*MXSHOT+2)
+       PARAMETER (MXMAP =350000,MXEPS =   10)
+       PARAMETER (MXWMAP=     5)
+       PARAMETER (MXSOLI=  1000)
+       PARAMETER (MXPLAN= 50000, MXPOIN=100000,MXEDGE=100)
+       PARAMETER (MXSBUF= 20000)
+       PARAMETER (MXMCA = 50000)
+*   The parameter MXNBMC must equal MXGNAM (sequence MAGBPARM) !
+       INTEGER MXNBMC
+       PARAMETER(MXNBMC=60)
+       DOUBLE PRECISION CLSDIS,CLSAVE
+       REAL EGAS,VGAS,XGAS,YGAS,DGAS,AGAS,BGAS,HGAS,MGAS,WGAS,OGAS,SGAS,
+     -      EXGAS,IOGAS,
+     -      CVGAS,CXGAS,CYGAS,CDGAS,CAGAS,CBGAS,CHGAS,CMGAS,CWGAS,COGAS,
+     -      CSGAS,CEXGAS,CIOGAS,
+     -      VGAS2,XGAS2,YGAS2,DGAS2,AGAS2,BGAS2,HGAS2,MGAS2,WGAS2,OGAS2,
+     -      SGAS2,EXGAS2,IOGAS2,
+     -      AORIG,AORIG2,PENPRB,PENRMS,PENDT,ENIOG,ENEXG,
+     -      BANG,BTAB,
+     -      VEXTR1,VEXTR2,VEXTR3,VEXTR4,
+     -      XEXTR1,XEXTR2,XEXTR3,XEXTR4,
+     -      YEXTR1,YEXTR2,YEXTR3,YEXTR4,
+     -      DEXTR1,DEXTR2,DEXTR3,DEXTR4,
+     -      AEXTR1,AEXTR2,AEXTR3,AEXTR4,
+     -      BEXTR1,BEXTR2,BEXTR3,BEXTR4,
+     -      HEXTR1,HEXTR2,HEXTR3,HEXTR4,
+     -      MEXTR1,MEXTR2,MEXTR3,MEXTR4,
+     -      WEXTR1,WEXTR2,WEXTR3,WEXTR4,
+     -      OEXTR1,OEXTR2,OEXTR3,OEXTR4,
+     -      SEXTR1,SEXTR2,SEXTR3,SEXTR4,
+     -      EEXTR1,EEXTR2,EEXTR3,EEXTR4,
+     -      ZEXTR1,ZEXTR2,ZEXTR3,ZEXTR4,
+     -      GASRNG,
+     -      Z,A,RHO,CMEAN,EMPROB,EPAIR,PGAS,TGAS,GASDEN,
+     -      DTION,DLION,GASFRM,ELOSCS
+       LOGICAL GASOK,TAB2D,GASOPT,HEEDOK,SRIMOK,TRIMOK,GASSET
+       INTEGER NGAS,NCLS,NBANG,NBTAB,NFTAB,NFCLS,
+     -      IVMETH,IXMETH,IYMETH,IDMETH,IAMETH,IBMETH,IHMETH,IMMETH,
+     -      IWMETH,IOMETH,ISMETH,IEMETH,IZMETH,
+     -      IVEXTR,IXEXTR,IYEXTR,IDEXTR,IAEXTR,IBEXTR,IHEXTR,IMEXTR,
+     -      IWEXTR,IOEXTR,ISEXTR,IEEXTR,IZEXTR,
+     -      JVEXTR,JXEXTR,JYEXTR,JDEXTR,JAEXTR,JBEXTR,JHEXTR,JMEXTR,
+     -      JWEXTR,JOEXTR,JSEXTR,JEEXTR,JZEXTR,
+     -      IATHR,IBTHR,IHTHR,
+     -      NEXGAS,NIOGAS,NCSGAS,ICSTYP
+       CHARACTER*80 GASID
+       CHARACTER*(MXCHAR) FCNTAB,FCNCLS
+       CHARACTER*10 CLSTYP
+       CHARACTER*45 DSCEXG(MXEXG),DSCIOG(MXIOG),DSCCSG(MXCSG)
+       COMMON /GASDAT/ CLSDIS(MXPAIR),CLSAVE,
+     -      EGAS(MXLIST),
+     -      VGAS(MXLIST),XGAS(MXLIST),YGAS(MXLIST),WGAS(MXLIST),
+     -      DGAS(MXLIST),OGAS(MXLIST),AGAS(MXLIST),BGAS(MXLIST),
+     -      HGAS(MXLIST),MGAS(MXLIST),SGAS(MXLIST,6),
+     -      EXGAS(MXLIST,MXEXG),IOGAS(MXLIST,MXIOG),
+     -      CVGAS(MXLIST),CXGAS(MXLIST),CYGAS(MXLIST),CWGAS(MXLIST),
+     -      CDGAS(MXLIST),COGAS(MXLIST),CAGAS(MXLIST),CBGAS(MXLIST),
+     -      CHGAS(MXLIST),CMGAS(MXLIST),CSGAS(MXLIST,6),
+     -      CEXGAS(MXLIST,MXEXG),CIOGAS(MXLIST,MXIOG),
+     -      VGAS2(MXLIST,MXBANG,MXBTAB),WGAS2(MXLIST,MXBANG,MXBTAB),
+     -      XGAS2(MXLIST,MXBANG,MXBTAB),YGAS2(MXLIST,MXBANG,MXBTAB),
+     -      AGAS2(MXLIST,MXBANG,MXBTAB),BGAS2(MXLIST,MXBANG,MXBTAB),
+     -      DGAS2(MXLIST,MXBANG,MXBTAB),OGAS2(MXLIST,MXBANG,MXBTAB),
+     -      HGAS2(MXLIST,MXBANG,MXBTAB),MGAS2(MXLIST,MXBANG,MXBTAB),
+     -      SGAS2(MXLIST,MXBANG,MXBTAB,6),
+     -      EXGAS2(MXLIST,MXBANG,MXBTAB,MXEXG),
+     -      IOGAS2(MXLIST,MXBANG,MXBTAB,MXIOG),
+     -      AORIG(MXLIST),AORIG2(MXLIST,MXBANG,MXBTAB),
+     -      PENPRB(MXEXG),PENRMS(MXEXG),PENDT(MXEXG),
+     -      ENIOG(MXIOG),ENEXG(MXEXG),
+     -      BANG(MXBANG),BTAB(MXBTAB),
+     -      GASRNG(20,2),GASFRM(MXNBMC),ELOSCS(MXCSG),
+     -      Z,A,RHO,CMEAN,EMPROB,EPAIR,PGAS,TGAS,GASDEN,
+     -      DTION,DLION,
+     -      VEXTR1,VEXTR2,VEXTR3,VEXTR4,
+     -      XEXTR1,XEXTR2,XEXTR3,XEXTR4,
+     -      YEXTR1,YEXTR2,YEXTR3,YEXTR4,
+     -      DEXTR1,DEXTR2,DEXTR3,DEXTR4,
+     -      AEXTR1,AEXTR2,AEXTR3,AEXTR4,
+     -      BEXTR1,BEXTR2,BEXTR3,BEXTR4,
+     -      HEXTR1,HEXTR2,HEXTR3,HEXTR4,
+     -      MEXTR1,MEXTR2,MEXTR3,MEXTR4,
+     -      WEXTR1,WEXTR2,WEXTR3,WEXTR4,
+     -      OEXTR1,OEXTR2,OEXTR3,OEXTR4,
+     -      SEXTR1(6),SEXTR2(6),SEXTR3(6),SEXTR4(6),
+     -      EEXTR1(MXEXG),EEXTR2(MXEXG),EEXTR3(MXEXG),EEXTR4(MXEXG),
+     -      ZEXTR1(MXIOG),ZEXTR2(MXIOG),ZEXTR3(MXIOG),ZEXTR4(MXIOG),
+     -      IVMETH,IXMETH,IYMETH,IDMETH,IAMETH,IBMETH,IHMETH,IMMETH,
+     -      IWMETH,IOMETH,ISMETH,IEMETH,IZMETH,
+     -      IVEXTR,IXEXTR,IYEXTR,IDEXTR,IAEXTR,IBEXTR,IHEXTR,IMEXTR,
+     -      IWEXTR,IOEXTR,ISEXTR,IEEXTR,IZEXTR,
+     -      JVEXTR,JXEXTR,JYEXTR,JDEXTR,JAEXTR,JBEXTR,JHEXTR,JMEXTR,
+     -      JWEXTR,JOEXTR,JSEXTR,JEEXTR,JZEXTR,
+     -      NGAS,NCLS,NBANG,NBTAB,NFTAB,NFCLS,
+     -      IATHR,IBTHR,IHTHR,
+     -      NEXGAS,NIOGAS,NCSGAS,ICSTYP(MXCSG),
+     -      GASOK(20),GASOPT(20,4),
+     -      TAB2D,HEEDOK,SRIMOK,TRIMOK,GASSET
+       COMMON /GASCHR/ FCNTAB,FCNCLS,CLSTYP,GASID,DSCEXG,DSCIOG,DSCCSG
+*-----------------------------------------------------------------------
+*   GMXDAT - Common block for gas mixing.
+*   (Last changed on 20/ 2/97.)
+*-----------------------------------------------------------------------
+       REAL BREAK,FRAC,XLOSCH,EFLD,ESTEP,ECRIT
+       INTEGER NBREAK
+       COMMON /GMXDAT/ BREAK(MXLIST),FRAC(MXFRAC),XLOSCH,
+     -      EFLD,ESTEP,ECRIT,NBREAK
+       LOGICAL         LINPUT,LCELPR,LCELPL,LWRMRK,LISOCL,LCHGCH,
+     -         LDRPLT,LDRPRT,LCLPRT,LCLPLT,LMAPCH,LCNTAM,
+     -         LDEBUG,LIDENT,LKEYPL,LRNDMI,LPROPR,LPROF,LGSTOP,LGSIG,
+     -         LSYNCH,LINPRD
+       INTEGER LUNOUT,JFAIL,JEXMEM
+       COMMON /PRTPLT/ LINPUT,LCELPR,LCELPL,LWRMRK,LISOCL,LCHGCH,
+     -         LDRPLT,LDRPRT,LCLPRT,LCLPLT,LMAPCH,LCNTAM,
+     -         LDEBUG,LIDENT,LKEYPL,LRNDMI,LPROPR,LPROF,LGSTOP,LGSIG,
+     -         LSYNCH,LINPRD,LUNOUT,JFAIL,JEXMEM
+       INTEGER I,J,K,L
+*** Identification
+       IF(LIDENT)PRINT *,' /// ROUTINE GASINT ///'
+*** Overall gas availability.
+       GASSET=.FALSE.
+*** Gas bits.
+       DO 10 I=1,20
+       GASOK(I)=.FALSE.
+10     CONTINUE
+*** Heed availability and Heed gas density.
+       HEEDOK=.FALSE.
+       GASDEN=0.0
+*** SRIM availability
+       SRIMOK=.FALSE.
+       CALL SRMINT
+*** Initialise the tables.
+       TAB2D=.FALSE.
+       NGAS=0
+       NBANG=1
+       NBTAB=1
+       DO 20 I=1,MXLIST
+       EGAS(I)=0.0
+       VGAS(I)=0.0
+       XGAS(I)=0.0
+       YGAS(I)=0.0
+       DGAS(I)=0.0
+       OGAS(I)=0.0
+       AGAS(I)=0.0
+       AORIG(I)=0.0
+       BGAS(I)=0.0
+       HGAS(I)=0.0
+       MGAS(I)=0.0
+       WGAS(I)=0.0
+       DO 70 L=1,6
+       SGAS(I,L)=0
+70     CONTINUE
+       DO 100 L=1,MXEXG
+       EXGAS(I,L)=0
+100    CONTINUE
+       DO 110 L=1,MXIOG
+       IOGAS(I,L)=0
+110    CONTINUE
+       CVGAS(I)=0.0
+       CXGAS(I)=0.0
+       CYGAS(I)=0.0
+       CDGAS(I)=0.0
+       COGAS(I)=0.0
+       CAGAS(I)=0.0
+       CBGAS(I)=0.0
+       CHGAS(I)=0.0
+       CMGAS(I)=0.0
+       CWGAS(I)=0.0
+       DO 80 L=1,6
+       CSGAS(I,L)=0
+80     CONTINUE
+       DO 120 L=1,MXEXG
+       CEXGAS(I,L)=0
+120    CONTINUE
+       DO 130 L=1,MXIOG
+       CIOGAS(I,L)=0
+130    CONTINUE
+       DO 40 K=1,MXBTAB
+       DO 30 J=1,MXBANG
+       VGAS2(I,J,K)=0.0
+       XGAS2(I,J,K)=0.0
+       YGAS2(I,J,K)=0.0
+       DGAS2(I,J,K)=0.0
+       OGAS2(I,J,K)=0.0
+       AGAS2(I,J,K)=0.0
+       AORIG2(I,J,K)=0.0
+       BGAS2(I,J,K)=0.0
+       HGAS2(I,J,K)=0.0
+       MGAS2(I,J,K)=0.0
+       WGAS2(I,J,K)=0.0
+30     CONTINUE
+40     CONTINUE
+20     CONTINUE
+*   More efficient ordering for big matrices.
+       DO 250 L=1,6
+       DO 240 K=1,MXBTAB
+       DO 230 J=1,MXBANG
+       DO 220 I=1,MXLIST
+       SGAS2(I,J,K,L)=0
+220    CONTINUE
+230    CONTINUE
+240    CONTINUE
+250    CONTINUE
+       DO 350 L=1,MXEXG
+       DO 340 K=1,MXBTAB
+       DO 330 J=1,MXBANG
+       DO 320 I=1,MXLIST
+       EXGAS2(I,J,K,L)=0
+320    CONTINUE
+330    CONTINUE
+340    CONTINUE
+350    CONTINUE
+       DO 450 L=1,MXIOG
+       DO 440 K=1,MXBTAB
+       DO 430 J=1,MXBANG
+       DO 420 I=1,MXLIST
+       IOGAS2(I,J,K,L)=0
+420    CONTINUE
+430    CONTINUE
+440    CONTINUE
+450    CONTINUE
+*** Lower limits for alpha and eta.
+       IATHR=1
+       IBTHR=1
+       IHTHR=1
+*** Number of excitations and ionisations
+       NEXGAS=0
+       NIOGAS=0
+       NCSGAS=0
+*** Ion diffusions.
+       DLION=0
+       DTION=0
+*** Table function.
+       FCNTAB=' '
+       NFTAB=1
+*** Gas identifier.
+       GASID=' '
+*** Extrapolation methods for small E/p.
+       JVEXTR=0
+       JXEXTR=0
+       JYEXTR=0
+       JDEXTR=0
+       JOEXTR=0
+       JAEXTR=0
+       JBEXTR=0
+       JHEXTR=0
+       JMEXTR=0
+       JWEXTR=0
+       JSEXTR=0
+       JEEXTR=0
+       JZEXTR=0
+*** Extrapolation methods for large E/p.
+       IVEXTR=1
+       IXEXTR=1
+       IYEXTR=1
+       IDEXTR=1
+       IOEXTR=1
+       IAEXTR=1
+       IBEXTR=1
+       IHEXTR=1
+       IMEXTR=1
+       IWEXTR=1
+       ISEXTR=1
+       IEEXTR=1
+       IZEXTR=1
+*** Interpolation methods.
+       IVMETH=2
+       IXMETH=2
+       IYMETH=2
+       IDMETH=2
+       IOMETH=2
+       IAMETH=2
+       IBMETH=2
+       IHMETH=2
+       IMMETH=2
+       IWMETH=2
+       ISMETH=2
+       IEMETH=0
+       IZMETH=0
+*** Initialize the Landau data.
+       A=0.0
+       Z=0.0
+       EMPROB=0.0
+       CMEAN=0.0
+       EPAIR=0.0
+       RHO=0.0
+*** Initialise the cluster size distribution.
+       FCNCLS=' '
+       NFCLS=1
+       DO 50 I=1,MXPAIR
+       CLSDIS(I)=0
+50     CONTINUE
+       CLSTYP='NOT SET'
+       NCLS=0
+*** Initialise the plot types.
+       DO 60 I=1,20
+       GASOPT(I,1)=.TRUE.
+       GASOPT(I,2)=.FALSE.
+       GASOPT(I,3)=.TRUE.
+       GASOPT(I,4)=.FALSE.
+       GASRNG(I,1)=0
+       GASRNG(I,2)=0
+60     CONTINUE
+       GASOPT(4,2)=.TRUE.
+       GASOPT(5,1)=.FALSE.
+       GASOPT(5,2)=.TRUE.
+       GASOPT(15,2)=.TRUE.
+*** Pressure and temperature.
+       PGAS=760.0
+       TGAS=300.0
+*** Initial data for the /GMXDAT/ common block.
+       ESTEP=0.5
+*** Magboltz gas composition.
+       DO 90 I=1,MXNBMC
+       GASFRM(I)=0
+90     CONTINUE
+       END

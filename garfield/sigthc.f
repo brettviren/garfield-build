@@ -1,0 +1,315 @@
+CDECK  ID>, SIGTHC.
+       SUBROUTINE SIGTHC(ISW,SCR,OPTION,NCR,TCR,IFAIL)
+*-----------------------------------------------------------------------
+*   SIGTHC - Computes threshold crossings
+*   (Last changed on  8/ 9/99.)
+*-----------------------------------------------------------------------
+       implicit none
+       INTEGER MXWIRE,MXSW,MXLIST,MXCHA,MXGRID,MXMATT,MXPOLE,MX3D,
+     -         MXPSTR,
+     -         MXPAIR,MXPART,MXFOUR,MXCLUS,
+     -         MXLINE,MXEQUT,
+     -         MXRECL,MXINCH,MXWORD,MXCHAR,MXNAME,MXLUN,
+     -         MXINS,MXREG,MXARG,MXCONS,MXVAR,MXALGE,
+     -         MXZERO,MXSTCK,MXFPNT,MXFPAR,MXWKLS,
+     -         MXHLEV,MXHLRL,MXSUBT,
+     -         MXDLVL,MXILVL,MXDLIN,
+     -         MXHIST,MXFRAC,MXBANG,MXBTAB,
+     -         MXEXG,MXIOG,MXCSG,
+     -         MXORIA,
+     -         MXMAT,MXEMAT,MXMDIM,
+     -         MXSHOT,MXZPAR,
+     -         MXMAP,MXEPS,MXWMAP,MXSOLI,MXSBUF,
+     -         MXPLAN,MXPOIN,MXEDGE,
+     -         MXMCA
+       PARAMETER (MXWIRE=  2000,MXSW  =  200)
+       PARAMETER (MXMATT=    10)
+       PARAMETER (MX3D  =   100)
+       PARAMETER (MXPOLE=    10)
+       PARAMETER (MXPSTR=   100)
+       PARAMETER (MXLIST=  1000)
+       PARAMETER (MXHIST=   200, MXCHA = MXLIST/2)
+       PARAMETER (MXGRID=    50)
+       PARAMETER (MXNAME=   200, MXLUN =    30)
+       PARAMETER (MXCLUS=   500, MXPAIR=  2000, MXPART= 10000)
+       PARAMETER (MXLINE=   150, MXEQUT=    50)
+       PARAMETER (MXFOUR=    16)
+       PARAMETER (MXRECL= 10000)
+       PARAMETER (MXINCH=  2000, MXWORD=   200, MXCHAR=MXINCH)
+       PARAMETER (MXINS =  1000, MXREG =   500, MXCONS=  -500,
+     -            MXVAR =   500, MXALGE=   500, MXARG =   100)
+       PARAMETER (MXMAT =   500, MXEMAT=200000, MXMDIM=   10)
+       PARAMETER (MXZERO=MXWIRE)
+       PARAMETER (MXSTCK=     5)
+       PARAMETER (MXFPNT= 20000, MXFPAR=    10)
+       PARAMETER (MXWKLS=    10)
+       PARAMETER (MXHLEV=     9, MXSUBT=   200, MXHLRL=  860)
+       PARAMETER (MXDLVL=    10, MXILVL=    20, MXDLIN= 2500)
+       PARAMETER (MXFRAC=    13)
+       PARAMETER (MXBANG=    20, MXBTAB=    25)
+       PARAMETER (MXEXG =    50, MXIOG =    10, MXCSG =  200)
+       PARAMETER (MXORIA=  1000)
+       PARAMETER (MXSHOT=    10, MXZPAR=4*MXSHOT+2)
+       PARAMETER (MXMAP =350000,MXEPS =   10)
+       PARAMETER (MXWMAP=     5)
+       PARAMETER (MXSOLI=  1000)
+       PARAMETER (MXPLAN= 50000, MXPOIN=100000,MXEDGE=100)
+       PARAMETER (MXSBUF= 20000)
+       PARAMETER (MXMCA = 50000)
+*   The parameter MXNBMC must equal MXGNAM (sequence MAGBPARM) !
+       INTEGER MXNBMC
+       PARAMETER(MXNBMC=60)
+       CHARACTER*80 CELLID
+       CHARACTER*3 TYPE
+       CHARACTER WIRTYP(MXWIRE),PLATYP(5),
+     -      PSLAB1(5,MXPSTR),PSLAB2(5,MXPSTR)
+       LOGICAL YNPLAN(4),PERX,PERY,PERZ,YNPLAX,YNPLAY,YNMATX,YNMATY,
+     -      POLAR,TUBE,PERMX,PERMY,PERMZ,PERAX,PERAY,PERAZ,
+     -      PERRX,PERRY,PERRZ,CNALSO(MXWIRE),LBGFMP,CELSET,LDIPOL,
+     -      BEMSET
+       INTEGER INDSW(MXWIRE),NWIRE,NSW,ICTYPE,MODE,NTUBE,MTUBE,
+     -      NXMATT,NYMATT,N3D,NTERMB,NTERMP,IENBGF,
+     -      INDPLA(5),NPSTR1(5),NPSTR2(5),
+     -      INDST1(5,MXPSTR),INDST2(5,MXPSTR)
+       REAL X(MXWIRE),Y(MXWIRE),V(MXWIRE),E(MXWIRE),D(MXWIRE),W(MXWIRE),
+     -      U(MXWIRE),DENS(MXWIRE),
+     -      COSPH2(MXWIRE),SINPH2(MXWIRE),AMP2(MXWIRE),
+     -      COPLAN(4),VTPLAN(4),XMATT(MXMATT,5),YMATT(MXMATT,5),
+     -      X3D(MX3D),Y3D(MX3D),Z3D(MX3D),E3D(MX3D),
+     -      DOWN(3),PLSTR1(5,MXPSTR,3),PLSTR2(5,MXPSTR,3),
+     -      COTUBE,VTTUBE,B2SIN(MXWIRE),P1,P2,C1,
+     -      XMIN,YMIN,ZMIN,XMAX,YMAX,ZMAX,VMIN,VMAX,
+     -      COPLAX,COPLAY,COMATX,COMATY,
+     -      CORVTA,CORVTB,CORVTC,V0,SX,SY,SZ,
+     -      KAPPA
+       COMPLEX ZMULT,WMAP(MXWIRE)
+       COMMON /CELDAT/ ZMULT,WMAP,X,Y,V,E,D,W,U,DENS,
+     -      COSPH2,SINPH2,AMP2,
+     -      B2SIN,COPLAN,VTPLAN,XMATT,YMATT,X3D,Y3D,Z3D,E3D,DOWN,
+     -      PLSTR1,PLSTR2,
+     -      XMIN,YMIN,ZMIN,XMAX,YMAX,ZMAX,VMIN,VMAX,
+     -      COPLAX,COPLAY,COMATX,COMATY,COTUBE,VTTUBE,
+     -      CORVTA,CORVTB,CORVTC,V0,SX,SY,SZ,P1,P2,C1,KAPPA,
+     -      INDSW,NWIRE,NSW,ICTYPE,MODE,NXMATT,NYMATT,NTUBE,MTUBE,
+     -      N3D,NTERMB,NTERMP,IENBGF,
+     -      INDPLA,NPSTR1,NPSTR2,INDST1,INDST2,
+     -      YNPLAN,YNPLAX,YNPLAY,YNMATX,YNMATY,PERX,PERY,PERZ,
+     -      POLAR,TUBE,PERMX,PERMY,PERMZ,PERAX,PERAY,PERAZ,CNALSO,
+     -      PERRX,PERRY,PERRZ,LBGFMP,CELSET,LDIPOL,BEMSET
+       COMMON /CELCHR/ CELLID,WIRTYP,PLATYP,TYPE,PSLAB1,PSLAB2
+       LOGICAL FPERX,FPERY,LCROSS,TRASET,TRAFLG,LITAIL,LDTAIL,LRTAIL,
+     -      LEPULS,LIPULS,SIGSET,RESSET
+       INTEGER NPAIR,ICLUST,NFOUR,MFEXP,MXMIN,MXMAX,
+     -      MYMIN,MYMAX,NTRBNK,ITRMAJ,NTIME,NORIA,
+     -      NASIMP,JIORD,NISIMP,NMQUAD,NCANG,IENANG
+       REAL TIMSIG,SIGNAL,TCLUST,SCLUST,ACLUST,BCLUST,FCLUST,
+     -      AVALAN,TSTART,TDEV,PRSTHR,
+     -      TRABNK,TRAVEC
+       CHARACTER*(MXCHAR) FCNANG
+       CHARACTER*12 AVATYP
+       CHARACTER*3 FCELTP
+       COMMON /SIGDAT/ TIMSIG(MXLIST),SIGNAL(MXLIST,MXSW,2),
+     -      AVALAN(2),TRAVEC(MXLIST),
+     -      TRABNK(MXLIST,9),TSTART,TDEV,PRSTHR,
+     -      TCLUST,SCLUST,ACLUST,BCLUST,FCLUST,ICLUST,NPAIR,
+     -      NFOUR,ITRMAJ,JIORD,NISIMP,NMQUAD,IENANG,NTIME,NORIA,
+     -      MFEXP,MXMIN,MXMAX,MYMIN,MYMAX,NTRBNK,NASIMP,NCANG,
+     -      TRASET,TRAFLG(9),FPERX,FPERY,LCROSS,LITAIL,LDTAIL,LRTAIL,
+     -      LEPULS,LIPULS,SIGSET,RESSET
+       COMMON /SIGCHR/ FCELTP,AVATYP,FCNANG
+       LOGICAL         LINPUT,LCELPR,LCELPL,LWRMRK,LISOCL,LCHGCH,
+     -         LDRPLT,LDRPRT,LCLPRT,LCLPLT,LMAPCH,LCNTAM,
+     -         LDEBUG,LIDENT,LKEYPL,LRNDMI,LPROPR,LPROF,LGSTOP,LGSIG,
+     -         LSYNCH,LINPRD
+       INTEGER LUNOUT,JFAIL,JEXMEM
+       COMMON /PRTPLT/ LINPUT,LCELPR,LCELPL,LWRMRK,LISOCL,LCHGCH,
+     -         LDRPLT,LDRPRT,LCLPRT,LCLPLT,LMAPCH,LCNTAM,
+     -         LDEBUG,LIDENT,LKEYPL,LRNDMI,LPROPR,LPROF,LGSTOP,LGSIG,
+     -         LSYNCH,LINPRD,LUNOUT,JFAIL,JEXMEM
+       DOUBLE PRECISION WGT,FPRMAT,
+     -      FPROJ,FPROJA,FPROJB,FPROJC,FPROJD,FPROJN,
+     -      EPSGX,EPSGY,EPSGZ,
+     -      GXMIN,GYMIN,GZMIN,GXMAX,GYMAX,GZMAX,
+     -      GXBOX,GYBOX,GZBOX
+       REAL PXMIN,PYMIN,PZMIN,PXMAX,PYMAX,PZMAX,
+     -      PRTHL,PRPHIL,PRAL,PRBL,PRCL,PROROT,
+     -      PRFABS,PRFREF,PRFMIN,PRFMAX,PRFCAL,WLMIN,WLMAX,
+     -      XT0,YT0,ZT0,XT1,YT1,ZT1,
+     -      TRMASS,TRENER,TRCHAR,TRXDIR,TRYDIR,TRZDIR,TRTH,TRPHI,TRDIST,
+     -      TRFLUX,TRELEC,TRNSRM
+       INTEGER NLINED,NGRIDX,NGRIDY,ITRTYP,NTRLIN,NTRSAM,INDPOS,NCTRW,
+     -      NTRFLX,NINORD,
+     -      NCPNAM,NCXLAB,NCYLAB,NCFPRO,IPRMAT,
+     -      NPRCOL,ICOL0,ICOLBX,ICOLPL,ICOLST,ICOLW1,ICOLW2,ICOLW3,
+     -      ICOLD1,ICOLD2,ICOLD3,ICOLRB,NGBOX,ITFSRM,NTRERR
+       LOGICAL LTRMS,LTRDEL,LTRINT,LTREXB,LTRCUT,TRFLAG,LINCAL,
+     -      LFULLB,LFULLP,LFULLT,LSPLIT,LSORT,LOUTL,LEPSG,LGSTEP,
+     -      LDLSRM,LDTSRM,LTRVVL
+       COMMON /PARMS / WGT(MXLIST),FPRMAT(3,3),
+     -      FPROJ(3,3),FPROJA,FPROJB,FPROJC,FPROJD,FPROJN,
+     -      EPSGX,EPSGY,EPSGZ,
+     -      GXMIN,GYMIN,GZMIN,GXMAX,GYMAX,GZMAX,
+     -      GXBOX(12),GYBOX(12),GZBOX(12),
+     -      PXMIN,PYMIN,PZMIN,PXMAX,PYMAX,PZMAX,
+     -      PRTHL,PRPHIL,PRAL,PRBL,PRCL,PROROT,
+     -      PRFABS,PRFREF,PRFMIN,PRFMAX,PRFCAL,WLMIN,WLMAX,
+     -      XT0,YT0,ZT0,XT1,YT1,ZT1,
+     -      TRMASS,TRENER,TRCHAR,TRXDIR,TRYDIR,TRZDIR,TRTH,TRPHI,TRDIST,
+     -      TRFLUX,TRELEC,TRNSRM,
+     -      INDPOS(11000),IPRMAT(3),NCTRW,NCPNAM,
+     -      ITRTYP,NTRLIN,NTRSAM,NTRFLX,ITFSRM,NTRERR(10),
+     -      NLINED,NINORD,NGRIDX,NGRIDY,NCXLAB,NCYLAB,NCFPRO,
+     -      NPRCOL,ICOL0,ICOLBX,ICOLPL,ICOLST,ICOLW1,ICOLW2,ICOLW3,
+     -      ICOLD1,ICOLD2,ICOLD3,ICOLRB,NGBOX,
+     -      LTRMS,LTRDEL,LTRINT,LTREXB,LTRCUT,TRFLAG(10),LINCAL,
+     -      LFULLB,LFULLP,LFULLT,LSPLIT,LSORT,LOUTL,LEPSG,LGSTEP,
+     -      LDLSRM,LDTSRM,LTRVVL
+       CHARACTER*80 PARTID,PXLAB,PYLAB,PROLAB
+       CHARACTER*10 PNAME
+       CHARACTER*5  PRVIEW
+       CHARACTER*(MXCHAR) FCNTRW
+       COMMON /PARCHR/ PARTID,FCNTRW,PNAME,PXLAB,PYLAB,PROLAB,PRVIEW
+       REAL TCR(MXLIST),SCR,VEC(MXLIST),VNEW,XPL(2),YPL(2),VECMIN,
+     -      VECMAX,DIVDIF
+       INTEGER ISW,NCR,IDIR,IORD,JORD,I,IFAIL,NC,IORG,NVEC
+       LOGICAL LPLOT
+       CHARACTER*(*) OPTION
+       CHARACTER*20 AUX
+       EXTERNAL DIVDIF
+*** Assume this will fail.
+       IFAIL=1
+*** Initial settings.
+       NCR=0
+*** Check the sense wire group.
+       IF(ISW.LE.0.OR.ISW.GT.NSW)THEN
+            PRINT *,' !!!!!! SIGTRC WARNING : Electrode group is'//
+     -           ' out of range; no crossings computed.'
+            RETURN
+       ENDIF
+*** Decode the option string.
+       IDIR=+1
+       LPLOT=.FALSE.
+       JORD=1
+       IF(INDEX(OPTION,'RISING').NE.0)   IDIR=+1
+       IF(INDEX(OPTION,'UP').NE.0)       IDIR=+1
+       IF(INDEX(OPTION,'TRAILING').NE.0) IDIR=-1
+       IF(INDEX(OPTION,'FALLING').NE.0)  IDIR=-1
+       IF(INDEX(OPTION,'DOWN').NE.0)     IDIR=-1
+       IF(INDEX(OPTION,'PLOT').NE.0)     LPLOT=.TRUE.
+       IF(INDEX(OPTION,'NOPLOT').NE.0)   LPLOT=.FALSE.
+       IF(INDEX(OPTION,'LINEAR').NE.0)   JORD=1
+       IF(INDEX(OPTION,'PARABOLA').NE.0) JORD=2
+       IF(INDEX(OPTION,'PARABOLIC').NE.0)JORD=2
+       IF(INDEX(OPTION,'QUADRATIC').NE.0)JORD=2
+       IF(INDEX(OPTION,'CUBIC').NE.0)    JORD=3
+*** Debugging output.
+       IF(LDEBUG)WRITE(LUNOUT,'(''  ++++++ SIGTHC DEBUG   : Computing'',
+     -      '' threshold crossings for''/
+     -      26X,''sense wire number  '',I3/
+     -      26X,''polynomial order   '',I3/
+     -      26X,''rising/falling     '',I3/
+     -      26X,''plot interpolation '',L3)') ISW,JORD,IDIR,LPLOT
+*** Prepare the plot frame if required.
+       IF(LPLOT)THEN
+*   Prepare vectors, establish range.
+            DO 100 I=1,NTIME
+            VEC(I)=SIGNAL(I,ISW,1)
+            IF(LCROSS)VEC(I)=VEC(I)+SIGNAL(I,ISW,2)
+            IF(I.EQ.1)THEN
+                 VECMAX=VEC(1)
+                 VECMIN=VEC(1)
+            ELSE
+                 VECMAX=MAX(VECMAX,VEC(I))
+                 VECMIN=MIN(VECMIN,VEC(I))
+            ENDIF
+100         CONTINUE
+*   Plot the frame.
+            CALL GRCART(TIMSIG(1),VECMIN-0.1*(VECMAX-VECMIN),
+     -           TIMSIG(NTIME),VECMAX+0.1*(VECMAX-VECMIN),
+     -           'Time [microsec]','Signal [microamp]',
+     -           'Check on threshold crossings')
+*   Plot the signal.
+            CALL GRATTS('FUNCTION-1','POLYLINE')
+            CALL GRLINE(NTIME,TIMSIG,VEC)
+*   Next are the signal segments, plotted as FUNCTION-2.
+            CALL GRATTS('FUNCTION-2','POLYLINE')
+       ENDIF
+*** Scan the signal vectors, initialise.
+       NVEC=1
+       IORG=1
+       VEC(1)=SIGNAL(1,ISW,1)
+       IF(LCROSS)VEC(1)=VEC(1)+SIGNAL(1,ISW,2)
+*   Loop over the elements.
+       DO 10 I=2,NTIME
+*   Compute the vector element.
+       VNEW=SIGNAL(I,ISW,1)
+       IF(LCROSS)VNEW=VNEW+SIGNAL(I,ISW,2)
+*   If still increasing or decreasing, add to the vector.
+       IF((IDIR.GT.0.AND.VNEW.GT.VEC(NVEC)).OR.
+     -      (IDIR.LT.0.AND.VNEW.LT.VEC(NVEC)))THEN
+            NVEC=NVEC+1
+            VEC(NVEC)=VNEW
+*   Otherwise see whether we crossed the threshold level.
+       ELSEIF((VEC(1)-SCR)*(SCR-VEC(NVEC)).GE.0.AND.
+     -      NVEC.GT.1.AND.
+     -      ((IDIR.GT.0.AND.VEC(NVEC).GT.VEC(1)).OR.
+     -      (IDIR.LT.0.AND.VEC(NVEC).LT.VEC(1))))THEN
+            NCR=NCR+1
+            IORD=MIN(NVEC-1,JORD)
+            TCR(NCR)=DIVDIF(TIMSIG(IORG),VEC,NVEC,SCR,IORD)
+            IF(LPLOT)CALL GRLINE(NVEC,TIMSIG(IORG),VEC)
+            NVEC=1
+            IORG=I
+            VEC(NVEC)=VNEW
+*   No crossing, simply reset the vector.
+       ELSE
+            NVEC=1
+            IORG=I
+            VEC(NVEC)=VNEW
+       ENDIF
+10     CONTINUE
+*** Check the final vector.
+       IF((VEC(1)-SCR)*(SCR-VEC(NVEC)).GE.0.AND.
+     -      NVEC.GT.1.AND.
+     -      ((IDIR.GT.0.AND.VEC(NVEC).GT.VEC(1)).OR.
+     -      (IDIR.LT.0.AND.VEC(NVEC).LT.VEC(1))))THEN
+            NCR=NCR+1
+            IORD=MIN(NVEC-1,JORD)
+            TCR(NCR)=DIVDIF(TIMSIG(IORG),VEC,NVEC,SCR,IORD)
+            IF(LPLOT)CALL GRLINE(NVEC,TIMSIG(IORG),VEC)
+       ENDIF
+*** Finish the plot if required.
+       IF(LPLOT)THEN
+            CALL GRATTS('FUNCTION-3','POLYLINE')
+*   Plot the threshold level.
+            XPL(1)=TIMSIG(1)
+            XPL(2)=TIMSIG(NTIME)
+            YPL(1)=SCR
+            YPL(2)=SCR
+            CALL GRLINE(2,XPL,YPL)
+*   Plot each of the times.
+            DO 120 I=1,NCR
+            XPL(1)=TCR(I)
+            XPL(2)=TCR(I)
+            YPL(1)=VECMIN-0.1*(VECMAX-VECMIN)
+            YPL(2)=SCR
+            CALL GRLINE(2,XPL,YPL)
+120         CONTINUE
+*   And add some comment strings.
+            CALL OUTFMT(REAL(NCR),2,AUX,NC,'LEFT')
+            CALL GRCOMM(1,'Crossings: '//AUX(1:NC))
+            CALL OUTFMT(REAL(JORD),2,AUX,NC,'LEFT')
+            CALL GRCOMM(3,'Interpolation order: '//AUX(1:NC))
+            IF(IDIR.EQ.+1)THEN
+                 CALL GRCOMM(2,'Hunting: rising edges')
+            ELSE
+                 CALL GRCOMM(2,'Hunting: falling edges')
+            ENDIF
+            IF(PARTID.NE.'Unknown')
+     -           CALL GRCOMM(4,'Particle: '//PARTID)
+*   Close the frame.
+            CALL GRNEXT
+       ENDIF
+*** Things seem to have worked.
+       IFAIL=0
+       END

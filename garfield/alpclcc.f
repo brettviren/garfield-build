@@ -1,0 +1,131 @@
+CDECK  ID>, ALPCLCC.
+       SUBROUTINE ALPCLCC(IFAIL)
+*-----------------------------------------------------------------------
+*   ALPCLCC - Estimate time step  for avalanche simulation in time of
+*             flight sim. uses estimated gain of 3.0 between planes.
+*             Calls TOF and PT subroutines and updates ALPHA and ATT
+*             B-field at any angle BTHETA to E-field.
+*   Author: Steve Biagi, with modifications
+*   (Last changed on 22/ 9/05.)
+*-----------------------------------------------------------------------
+       implicit none
+       DOUBLE PRECISION TMAX,SMALL,API,ESTART,THETA,PHI,TCFMAX,RSTART,
+     -      EMAG
+       INTEGER NMAX
+       COMMON/SETP/TMAX,SMALL,API,ESTART,THETA,PHI,TCFMAX(8),RSTART,
+     -      EMAG,NMAX
+*   Combined /TOFOUT/, /TOFGOUT/ and /TOFHOUT/ in a single common.
+       DOUBLE PRECISION RALPHA,RALPER,TOFENE,TOFENER,TOFWV,TOFWVER,
+     -      TOFWVZ,TOFWVZER,TOFWVY,TOFWVYER,TOFWVX,TOFWVXER,
+     -      TOFDL,TOFDLER,TOFDT,TOFDTER,TOFWR,TOFWRER,
+     -      TOFDZZ,TOFDZZER,TOFDXX,TOFDXXER,TOFDYY,TOFDYYER,
+     -      TOFDYZ,TOFDYZER,TOFDXY,TOFDXYER,TOFDXZ,TOFDXZER,
+     -      TOFWRZ,TOFWRZER,TOFWRY,TOFWRYER,TOFWRX,TOFWRXER,
+     -      RATTOF,RATOFER
+       COMMON /TOFHOUT/ RALPHA,RALPER,TOFENE,TOFENER,TOFWV,TOFWVER,
+     -      TOFWVZ,TOFWVZER,TOFWVY,TOFWVYER,TOFWVX,TOFWVXER,
+     -      TOFDL,TOFDLER,TOFDT,TOFDTER,TOFWR,TOFWRER,
+     -      TOFDZZ,TOFDZZER,TOFDXX,TOFDXXER,TOFDYY,TOFDYYER,
+     -      TOFDYZ,TOFDYZER,TOFDXY,TOFDXYER,TOFDXZ,TOFDXZER,
+     -      TOFWRZ,TOFWRZER,TOFWRY,TOFWRYER,TOFWRX,TOFWRXER,
+     -      RATTOF,RATOFER
+       DOUBLE PRECISION ALPHA,ATT
+       COMMON /CTOWNS/ ALPHA,ATT
+       DOUBLE PRECISION ALPER,ATTER
+       COMMON /CTWNER/ ALPER,ATTER
+       DOUBLE PRECISION DXXER,DYYER,DZZER,DYZER,DXYER,DXZER
+       COMMON /DIFERB/ DXXER,DYYER,DZZER,DYZER,DXYER,DXZER
+       DOUBLE PRECISION DFLER,DFTER
+       COMMON /DIFERL/ DFLER,DFTER
+       DOUBLE PRECISION DIFXX,DIFYY,DIFZZ,DIFYZ,DIFXY,DIFXZ
+       COMMON /DIFLAB/ DIFXX,DIFYY,DIFZZ,DIFYZ,DIFXY,DIFXZ
+       DOUBLE PRECISION DIFLN,DIFTR
+       COMMON /DIFVEL/ DIFLN,DIFTR
+       DOUBLE PRECISION WX,WY,WZ
+       COMMON /VEL/ WX,WY,WZ
+       DOUBLE PRECISION DWX,DWY,DWZ
+       COMMON /VELERR/ DWX,DWY,DWZ
+       DOUBLE PRECISION ALPHAST,VDST,TSTEP,ZSTEP,TFINAL,ZFINAL
+       INTEGER ITFINAL,IPRIM
+       COMMON/CION/ALPHAST,VDST,TSTEP,ZSTEP,TFINAL,ZFINAL,ITFINAL,IPRIM
+*-----------------------------------------------------------------------
+*   MAGPAR - Interface parameters for gas mixing with Magboltz.
+*   (Last changed on  2/ 3/08.)
+*-----------------------------------------------------------------------
+       INTEGER MXGNAM
+       PARAMETER(MXGNAM=60)
+       DOUBLE PRECISION FRAMIX
+       LOGICAL LF0PLT,LCSPLT,LGKEEP,LBMCPR
+       COMMON /MAGPAR/ FRAMIX(MXGNAM),LF0PLT,LCSPLT,LGKEEP,LBMCPR
+       LOGICAL         LINPUT,LCELPR,LCELPL,LWRMRK,LISOCL,LCHGCH,
+     -         LDRPLT,LDRPRT,LCLPRT,LCLPLT,LMAPCH,LCNTAM,
+     -         LDEBUG,LIDENT,LKEYPL,LRNDMI,LPROPR,LPROF,LGSTOP,LGSIG,
+     -         LSYNCH,LINPRD
+       INTEGER LUNOUT,JFAIL,JEXMEM
+       COMMON /PRTPLT/ LINPUT,LCELPR,LCELPL,LWRMRK,LISOCL,LCHGCH,
+     -         LDRPLT,LDRPRT,LCLPRT,LCLPLT,LMAPCH,LCNTAM,
+     -         LDEBUG,LIDENT,LKEYPL,LRNDMI,LPROPR,LPROF,LGSTOP,LGSIG,
+     -         LSYNCH,LINPRD,LUNOUT,JFAIL,JEXMEM
+       INTEGER IFAIL,IMAX
+       DOUBLE PRECISION WRZN,FC1,FC2,ALPZZ,ALPATT,RATIO
+*** Assume that this will work.
+       IFAIL=0
+*** Increase NMAX if too small.
+      IMAX=NMAX/10000000
+      IF(IMAX.LT.5) IMAX=5
+      NMAX=IMAX*10000000
+      ALPHAST=0.85D0*ABS(ALPHA-ATT)
+      VDST=WZ*1.D-5
+      TSTEP=LOG(3.0D0)/(ALPHAST*VDST*1.0D5)
+      TSTEP=TSTEP*1.0D12
+      TFINAL=7.0D0*TSTEP
+      ITFINAL=7
+*** Calc time of flight and pt
+      IF(LBMCPR)WRITE(LUNOUT,25)
+   25 FORMAT(/,2X,'SOLUTION FOR PULSED TOWNSEND AND TIME OF FLIGHT PARAM
+     /ETERS',/,'  ------------------------------------------------------
+     /--------')
+      IF(LBMCPR)WRITE(LUNOUT,26) TSTEP
+   26 FORMAT(1(/),'  TIME STEP BETWEEN SAMPLING PLANES =',D12.5,' PICOSE
+     /CS.',/)
+      CALL MONTEFTH(IFAIL)
+      IF(IFAIL.NE.0)THEN
+           PRINT *,' !!!!!! ALPCLCC WARNING : Failure in MONTEFTH;'//
+     -          ' no further calculations.'
+           RETURN
+      ENDIF
+      CALL FRIEDLAND
+      CALL PTH
+      CALL TOFH
+      IF(LBMCPR)WRITE(LUNOUT,27) RALPHA,RALPER,RATTOF,RATOFER
+   27 FORMAT(/,'PT IONISATION AND ATTACHMENT RATES *10**12/SEC',/,'ALPHA
+     /=',D10.3,' +- ',F6.2,' %      ATT=',D10.3,' +- ',F6.2,' %')
+      IF(LBMCPR)WRITE(LUNOUT,28)
+   28 FORMAT(/,'TOF DIFFUSION')
+       IF(LBMCPR)WRITE(LUNOUT,29)
+     -      TOFDZZ,TOFDZZER,TOFDXX,TOFDXXER,TOFDYY,TOFDYYER,
+     -      TOFDYZ,TOFDYZER,TOFDXZ,TOFDXZER,TOFDXY,TOFDXYER
+   29 FORMAT(/,'DZZ=',F8.1,' +- ',F5.1,' %',/,'DXX=',F8.1,' +- ',F5.1,'
+     /%',/,'DYY=',F8.1,' +- ',F5.1,' %',/,'DYZ=',F8.1,' +- ',F5.1,' %',/
+     /,'DXZ=',F8.1,' +- ',F5.1,' %',/,'DXY=',F8.1,' +- ',F5.1,' %')
+      IF(LBMCPR)WRITE(LUNOUT,30)
+   30 FORMAT(/,'TOF DRIFT VELOCITY')
+       IF(LBMCPR)WRITE(LUNOUT,31)
+     -      TOFWRZ,TOFWRZER,TOFWRY,TOFWRYER,TOFWRX,TOFWRXER
+   31 FORMAT(/,'WRZ=',F8.2,' +-',F6.1,' %    WRY=',F8.2,' +-',F6.1,' %
+     / WRX=',F8.2,' +-',F6.1,' %')
+*** Calculate townsend sst coeficients from tof results
+      WRZN=TOFWRZ*1.0D05
+      FC1=WRZN/(2.0D0*TOFDZZ)
+      FC2=((RALPHA-RATTOF)*1.0D12)/TOFDZZ
+      ALPZZ=FC1-SQRT(FC1**2-FC2)
+*** Load new alpha and attachment into common blocks
+      ALPATT=ALPHA-ATT
+      RATIO=ALPZZ/ALPATT
+      ALPHA=ALPHA*RATIO
+      ATT=ATT*RATIO
+      IF(LBMCPR)WRITE(LUNOUT,32) ALPHA,ALPER,ATT,ATTER
+   32 FORMAT(/,'TOWNSEND COEFICIENTS CALCULATED FROM TOF RESULTS:',2(/),
+     /'IONISATION RATE /CM.=',D11.4,' +-',F6.2,' %',/,'ATTACHMENT RATE /
+     /CM.=',D11.4,' +-',F6.2,' %',/)
+      END

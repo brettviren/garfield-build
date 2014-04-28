@@ -1,0 +1,430 @@
+CDECK  ID>, DLCTRG.
+       SUBROUTINE DLCTRG(IFAIL)
+*-----------------------------------------------------------------------
+*   DLCTRG - This routine retrieves drifting information for a track
+*            from a dataset. It informs the user if the data don't seem
+*            to belong to the present cell and gas information.
+*   VARIABLES : STRING      : Character string that should contain a
+*                             description of the dataset being read.
+*   (Last changed on 21/ 4/96.)
+*-----------------------------------------------------------------------
+       INTEGER MXWIRE,MXSW,MXLIST,MXCHA,MXGRID,MXMATT,MXPOLE,MX3D,
+     -         MXPSTR,
+     -         MXPAIR,MXPART,MXFOUR,MXCLUS,
+     -         MXLINE,MXEQUT,
+     -         MXRECL,MXINCH,MXWORD,MXCHAR,MXNAME,MXLUN,
+     -         MXINS,MXREG,MXARG,MXCONS,MXVAR,MXALGE,
+     -         MXZERO,MXSTCK,MXFPNT,MXFPAR,MXWKLS,
+     -         MXHLEV,MXHLRL,MXSUBT,
+     -         MXDLVL,MXILVL,MXDLIN,
+     -         MXHIST,MXFRAC,MXBANG,MXBTAB,
+     -         MXEXG,MXIOG,MXCSG,
+     -         MXORIA,
+     -         MXMAT,MXEMAT,MXMDIM,
+     -         MXSHOT,MXZPAR,
+     -         MXMAP,MXEPS,MXWMAP,MXSOLI,MXSBUF,
+     -         MXPLAN,MXPOIN,MXEDGE,
+     -         MXMCA
+       PARAMETER (MXWIRE=  2000,MXSW  =  200)
+       PARAMETER (MXMATT=    10)
+       PARAMETER (MX3D  =   100)
+       PARAMETER (MXPOLE=    10)
+       PARAMETER (MXPSTR=   100)
+       PARAMETER (MXLIST=  1000)
+       PARAMETER (MXHIST=   200, MXCHA = MXLIST/2)
+       PARAMETER (MXGRID=    50)
+       PARAMETER (MXNAME=   200, MXLUN =    30)
+       PARAMETER (MXCLUS=   500, MXPAIR=  2000, MXPART= 10000)
+       PARAMETER (MXLINE=   150, MXEQUT=    50)
+       PARAMETER (MXFOUR=    16)
+       PARAMETER (MXRECL= 10000)
+       PARAMETER (MXINCH=  2000, MXWORD=   200, MXCHAR=MXINCH)
+       PARAMETER (MXINS =  1000, MXREG =   500, MXCONS=  -500,
+     -            MXVAR =   500, MXALGE=   500, MXARG =   100)
+       PARAMETER (MXMAT =   500, MXEMAT=200000, MXMDIM=   10)
+       PARAMETER (MXZERO=MXWIRE)
+       PARAMETER (MXSTCK=     5)
+       PARAMETER (MXFPNT= 20000, MXFPAR=    10)
+       PARAMETER (MXWKLS=    10)
+       PARAMETER (MXHLEV=     9, MXSUBT=   200, MXHLRL=  860)
+       PARAMETER (MXDLVL=    10, MXILVL=    20, MXDLIN= 2500)
+       PARAMETER (MXFRAC=    13)
+       PARAMETER (MXBANG=    20, MXBTAB=    25)
+       PARAMETER (MXEXG =    50, MXIOG =    10, MXCSG =  200)
+       PARAMETER (MXORIA=  1000)
+       PARAMETER (MXSHOT=    10, MXZPAR=4*MXSHOT+2)
+       PARAMETER (MXMAP =350000,MXEPS =   10)
+       PARAMETER (MXWMAP=     5)
+       PARAMETER (MXSOLI=  1000)
+       PARAMETER (MXPLAN= 50000, MXPOIN=100000,MXEDGE=100)
+       PARAMETER (MXSBUF= 20000)
+       PARAMETER (MXMCA = 50000)
+*   The parameter MXNBMC must equal MXGNAM (sequence MAGBPARM) !
+       INTEGER MXNBMC
+       PARAMETER(MXNBMC=60)
+       CHARACTER*80 CELLID
+       CHARACTER*3 TYPE
+       CHARACTER WIRTYP(MXWIRE),PLATYP(5),
+     -      PSLAB1(5,MXPSTR),PSLAB2(5,MXPSTR)
+       LOGICAL YNPLAN(4),PERX,PERY,PERZ,YNPLAX,YNPLAY,YNMATX,YNMATY,
+     -      POLAR,TUBE,PERMX,PERMY,PERMZ,PERAX,PERAY,PERAZ,
+     -      PERRX,PERRY,PERRZ,CNALSO(MXWIRE),LBGFMP,CELSET,LDIPOL,
+     -      BEMSET
+       INTEGER INDSW(MXWIRE),NWIRE,NSW,ICTYPE,MODE,NTUBE,MTUBE,
+     -      NXMATT,NYMATT,N3D,NTERMB,NTERMP,IENBGF,
+     -      INDPLA(5),NPSTR1(5),NPSTR2(5),
+     -      INDST1(5,MXPSTR),INDST2(5,MXPSTR)
+       REAL X(MXWIRE),Y(MXWIRE),V(MXWIRE),E(MXWIRE),D(MXWIRE),W(MXWIRE),
+     -      U(MXWIRE),DENS(MXWIRE),
+     -      COSPH2(MXWIRE),SINPH2(MXWIRE),AMP2(MXWIRE),
+     -      COPLAN(4),VTPLAN(4),XMATT(MXMATT,5),YMATT(MXMATT,5),
+     -      X3D(MX3D),Y3D(MX3D),Z3D(MX3D),E3D(MX3D),
+     -      DOWN(3),PLSTR1(5,MXPSTR,3),PLSTR2(5,MXPSTR,3),
+     -      COTUBE,VTTUBE,B2SIN(MXWIRE),P1,P2,C1,
+     -      XMIN,YMIN,ZMIN,XMAX,YMAX,ZMAX,VMIN,VMAX,
+     -      COPLAX,COPLAY,COMATX,COMATY,
+     -      CORVTA,CORVTB,CORVTC,V0,SX,SY,SZ,
+     -      KAPPA
+       COMPLEX ZMULT,WMAP(MXWIRE)
+       COMMON /CELDAT/ ZMULT,WMAP,X,Y,V,E,D,W,U,DENS,
+     -      COSPH2,SINPH2,AMP2,
+     -      B2SIN,COPLAN,VTPLAN,XMATT,YMATT,X3D,Y3D,Z3D,E3D,DOWN,
+     -      PLSTR1,PLSTR2,
+     -      XMIN,YMIN,ZMIN,XMAX,YMAX,ZMAX,VMIN,VMAX,
+     -      COPLAX,COPLAY,COMATX,COMATY,COTUBE,VTTUBE,
+     -      CORVTA,CORVTB,CORVTC,V0,SX,SY,SZ,P1,P2,C1,KAPPA,
+     -      INDSW,NWIRE,NSW,ICTYPE,MODE,NXMATT,NYMATT,NTUBE,MTUBE,
+     -      N3D,NTERMB,NTERMP,IENBGF,
+     -      INDPLA,NPSTR1,NPSTR2,INDST1,INDST2,
+     -      YNPLAN,YNPLAX,YNPLAY,YNMATX,YNMATY,PERX,PERY,PERZ,
+     -      POLAR,TUBE,PERMX,PERMY,PERMZ,PERAX,PERAY,PERAZ,CNALSO,
+     -      PERRX,PERRY,PERRZ,LBGFMP,CELSET,LDIPOL,BEMSET
+       COMMON /CELCHR/ CELLID,WIRTYP,PLATYP,TYPE,PSLAB1,PSLAB2
+       DOUBLE PRECISION CLSDIS,CLSAVE
+       REAL EGAS,VGAS,XGAS,YGAS,DGAS,AGAS,BGAS,HGAS,MGAS,WGAS,OGAS,SGAS,
+     -      EXGAS,IOGAS,
+     -      CVGAS,CXGAS,CYGAS,CDGAS,CAGAS,CBGAS,CHGAS,CMGAS,CWGAS,COGAS,
+     -      CSGAS,CEXGAS,CIOGAS,
+     -      VGAS2,XGAS2,YGAS2,DGAS2,AGAS2,BGAS2,HGAS2,MGAS2,WGAS2,OGAS2,
+     -      SGAS2,EXGAS2,IOGAS2,
+     -      AORIG,AORIG2,PENPRB,PENRMS,PENDT,ENIOG,ENEXG,
+     -      BANG,BTAB,
+     -      VEXTR1,VEXTR2,VEXTR3,VEXTR4,
+     -      XEXTR1,XEXTR2,XEXTR3,XEXTR4,
+     -      YEXTR1,YEXTR2,YEXTR3,YEXTR4,
+     -      DEXTR1,DEXTR2,DEXTR3,DEXTR4,
+     -      AEXTR1,AEXTR2,AEXTR3,AEXTR4,
+     -      BEXTR1,BEXTR2,BEXTR3,BEXTR4,
+     -      HEXTR1,HEXTR2,HEXTR3,HEXTR4,
+     -      MEXTR1,MEXTR2,MEXTR3,MEXTR4,
+     -      WEXTR1,WEXTR2,WEXTR3,WEXTR4,
+     -      OEXTR1,OEXTR2,OEXTR3,OEXTR4,
+     -      SEXTR1,SEXTR2,SEXTR3,SEXTR4,
+     -      EEXTR1,EEXTR2,EEXTR3,EEXTR4,
+     -      ZEXTR1,ZEXTR2,ZEXTR3,ZEXTR4,
+     -      GASRNG,
+     -      Z,A,RHO,CMEAN,EMPROB,EPAIR,PGAS,TGAS,GASDEN,
+     -      DTION,DLION,GASFRM,ELOSCS
+       LOGICAL GASOK,TAB2D,GASOPT,HEEDOK,SRIMOK,TRIMOK,GASSET
+       INTEGER NGAS,NCLS,NBANG,NBTAB,NFTAB,NFCLS,
+     -      IVMETH,IXMETH,IYMETH,IDMETH,IAMETH,IBMETH,IHMETH,IMMETH,
+     -      IWMETH,IOMETH,ISMETH,IEMETH,IZMETH,
+     -      IVEXTR,IXEXTR,IYEXTR,IDEXTR,IAEXTR,IBEXTR,IHEXTR,IMEXTR,
+     -      IWEXTR,IOEXTR,ISEXTR,IEEXTR,IZEXTR,
+     -      JVEXTR,JXEXTR,JYEXTR,JDEXTR,JAEXTR,JBEXTR,JHEXTR,JMEXTR,
+     -      JWEXTR,JOEXTR,JSEXTR,JEEXTR,JZEXTR,
+     -      IATHR,IBTHR,IHTHR,
+     -      NEXGAS,NIOGAS,NCSGAS,ICSTYP
+       CHARACTER*80 GASID
+       CHARACTER*(MXCHAR) FCNTAB,FCNCLS
+       CHARACTER*10 CLSTYP
+       CHARACTER*45 DSCEXG(MXEXG),DSCIOG(MXIOG),DSCCSG(MXCSG)
+       COMMON /GASDAT/ CLSDIS(MXPAIR),CLSAVE,
+     -      EGAS(MXLIST),
+     -      VGAS(MXLIST),XGAS(MXLIST),YGAS(MXLIST),WGAS(MXLIST),
+     -      DGAS(MXLIST),OGAS(MXLIST),AGAS(MXLIST),BGAS(MXLIST),
+     -      HGAS(MXLIST),MGAS(MXLIST),SGAS(MXLIST,6),
+     -      EXGAS(MXLIST,MXEXG),IOGAS(MXLIST,MXIOG),
+     -      CVGAS(MXLIST),CXGAS(MXLIST),CYGAS(MXLIST),CWGAS(MXLIST),
+     -      CDGAS(MXLIST),COGAS(MXLIST),CAGAS(MXLIST),CBGAS(MXLIST),
+     -      CHGAS(MXLIST),CMGAS(MXLIST),CSGAS(MXLIST,6),
+     -      CEXGAS(MXLIST,MXEXG),CIOGAS(MXLIST,MXIOG),
+     -      VGAS2(MXLIST,MXBANG,MXBTAB),WGAS2(MXLIST,MXBANG,MXBTAB),
+     -      XGAS2(MXLIST,MXBANG,MXBTAB),YGAS2(MXLIST,MXBANG,MXBTAB),
+     -      AGAS2(MXLIST,MXBANG,MXBTAB),BGAS2(MXLIST,MXBANG,MXBTAB),
+     -      DGAS2(MXLIST,MXBANG,MXBTAB),OGAS2(MXLIST,MXBANG,MXBTAB),
+     -      HGAS2(MXLIST,MXBANG,MXBTAB),MGAS2(MXLIST,MXBANG,MXBTAB),
+     -      SGAS2(MXLIST,MXBANG,MXBTAB,6),
+     -      EXGAS2(MXLIST,MXBANG,MXBTAB,MXEXG),
+     -      IOGAS2(MXLIST,MXBANG,MXBTAB,MXIOG),
+     -      AORIG(MXLIST),AORIG2(MXLIST,MXBANG,MXBTAB),
+     -      PENPRB(MXEXG),PENRMS(MXEXG),PENDT(MXEXG),
+     -      ENIOG(MXIOG),ENEXG(MXEXG),
+     -      BANG(MXBANG),BTAB(MXBTAB),
+     -      GASRNG(20,2),GASFRM(MXNBMC),ELOSCS(MXCSG),
+     -      Z,A,RHO,CMEAN,EMPROB,EPAIR,PGAS,TGAS,GASDEN,
+     -      DTION,DLION,
+     -      VEXTR1,VEXTR2,VEXTR3,VEXTR4,
+     -      XEXTR1,XEXTR2,XEXTR3,XEXTR4,
+     -      YEXTR1,YEXTR2,YEXTR3,YEXTR4,
+     -      DEXTR1,DEXTR2,DEXTR3,DEXTR4,
+     -      AEXTR1,AEXTR2,AEXTR3,AEXTR4,
+     -      BEXTR1,BEXTR2,BEXTR3,BEXTR4,
+     -      HEXTR1,HEXTR2,HEXTR3,HEXTR4,
+     -      MEXTR1,MEXTR2,MEXTR3,MEXTR4,
+     -      WEXTR1,WEXTR2,WEXTR3,WEXTR4,
+     -      OEXTR1,OEXTR2,OEXTR3,OEXTR4,
+     -      SEXTR1(6),SEXTR2(6),SEXTR3(6),SEXTR4(6),
+     -      EEXTR1(MXEXG),EEXTR2(MXEXG),EEXTR3(MXEXG),EEXTR4(MXEXG),
+     -      ZEXTR1(MXIOG),ZEXTR2(MXIOG),ZEXTR3(MXIOG),ZEXTR4(MXIOG),
+     -      IVMETH,IXMETH,IYMETH,IDMETH,IAMETH,IBMETH,IHMETH,IMMETH,
+     -      IWMETH,IOMETH,ISMETH,IEMETH,IZMETH,
+     -      IVEXTR,IXEXTR,IYEXTR,IDEXTR,IAEXTR,IBEXTR,IHEXTR,IMEXTR,
+     -      IWEXTR,IOEXTR,ISEXTR,IEEXTR,IZEXTR,
+     -      JVEXTR,JXEXTR,JYEXTR,JDEXTR,JAEXTR,JBEXTR,JHEXTR,JMEXTR,
+     -      JWEXTR,JOEXTR,JSEXTR,JEEXTR,JZEXTR,
+     -      NGAS,NCLS,NBANG,NBTAB,NFTAB,NFCLS,
+     -      IATHR,IBTHR,IHTHR,
+     -      NEXGAS,NIOGAS,NCSGAS,ICSTYP(MXCSG),
+     -      GASOK(20),GASOPT(20,4),
+     -      TAB2D,HEEDOK,SRIMOK,TRIMOK,GASSET
+       COMMON /GASCHR/ FCNTAB,FCNCLS,CLSTYP,GASID,DSCEXG,DSCIOG,DSCCSG
+       DOUBLE PRECISION WGT,FPRMAT,
+     -      FPROJ,FPROJA,FPROJB,FPROJC,FPROJD,FPROJN,
+     -      EPSGX,EPSGY,EPSGZ,
+     -      GXMIN,GYMIN,GZMIN,GXMAX,GYMAX,GZMAX,
+     -      GXBOX,GYBOX,GZBOX
+       REAL PXMIN,PYMIN,PZMIN,PXMAX,PYMAX,PZMAX,
+     -      PRTHL,PRPHIL,PRAL,PRBL,PRCL,PROROT,
+     -      PRFABS,PRFREF,PRFMIN,PRFMAX,PRFCAL,WLMIN,WLMAX,
+     -      XT0,YT0,ZT0,XT1,YT1,ZT1,
+     -      TRMASS,TRENER,TRCHAR,TRXDIR,TRYDIR,TRZDIR,TRTH,TRPHI,TRDIST,
+     -      TRFLUX,TRELEC,TRNSRM
+       INTEGER NLINED,NGRIDX,NGRIDY,ITRTYP,NTRLIN,NTRSAM,INDPOS,NCTRW,
+     -      NTRFLX,NINORD,
+     -      NCPNAM,NCXLAB,NCYLAB,NCFPRO,IPRMAT,
+     -      NPRCOL,ICOL0,ICOLBX,ICOLPL,ICOLST,ICOLW1,ICOLW2,ICOLW3,
+     -      ICOLD1,ICOLD2,ICOLD3,ICOLRB,NGBOX,ITFSRM,NTRERR
+       LOGICAL LTRMS,LTRDEL,LTRINT,LTREXB,LTRCUT,TRFLAG,LINCAL,
+     -      LFULLB,LFULLP,LFULLT,LSPLIT,LSORT,LOUTL,LEPSG,LGSTEP,
+     -      LDLSRM,LDTSRM,LTRVVL
+       COMMON /PARMS / WGT(MXLIST),FPRMAT(3,3),
+     -      FPROJ(3,3),FPROJA,FPROJB,FPROJC,FPROJD,FPROJN,
+     -      EPSGX,EPSGY,EPSGZ,
+     -      GXMIN,GYMIN,GZMIN,GXMAX,GYMAX,GZMAX,
+     -      GXBOX(12),GYBOX(12),GZBOX(12),
+     -      PXMIN,PYMIN,PZMIN,PXMAX,PYMAX,PZMAX,
+     -      PRTHL,PRPHIL,PRAL,PRBL,PRCL,PROROT,
+     -      PRFABS,PRFREF,PRFMIN,PRFMAX,PRFCAL,WLMIN,WLMAX,
+     -      XT0,YT0,ZT0,XT1,YT1,ZT1,
+     -      TRMASS,TRENER,TRCHAR,TRXDIR,TRYDIR,TRZDIR,TRTH,TRPHI,TRDIST,
+     -      TRFLUX,TRELEC,TRNSRM,
+     -      INDPOS(11000),IPRMAT(3),NCTRW,NCPNAM,
+     -      ITRTYP,NTRLIN,NTRSAM,NTRFLX,ITFSRM,NTRERR(10),
+     -      NLINED,NINORD,NGRIDX,NGRIDY,NCXLAB,NCYLAB,NCFPRO,
+     -      NPRCOL,ICOL0,ICOLBX,ICOLPL,ICOLST,ICOLW1,ICOLW2,ICOLW3,
+     -      ICOLD1,ICOLD2,ICOLD3,ICOLRB,NGBOX,
+     -      LTRMS,LTRDEL,LTRINT,LTREXB,LTRCUT,TRFLAG(10),LINCAL,
+     -      LFULLB,LFULLP,LFULLT,LSPLIT,LSORT,LOUTL,LEPSG,LGSTEP,
+     -      LDLSRM,LDTSRM,LTRVVL
+       CHARACTER*80 PARTID,PXLAB,PYLAB,PROLAB
+       CHARACTER*10 PNAME
+       CHARACTER*5  PRVIEW
+       CHARACTER*(MXCHAR) FCNTRW
+       COMMON /PARCHR/ PARTID,FCNTRW,PNAME,PXLAB,PYLAB,PROLAB,PRVIEW
+       LOGICAL FPERX,FPERY,LCROSS,TRASET,TRAFLG,LITAIL,LDTAIL,LRTAIL,
+     -      LEPULS,LIPULS,SIGSET,RESSET
+       INTEGER NPAIR,ICLUST,NFOUR,MFEXP,MXMIN,MXMAX,
+     -      MYMIN,MYMAX,NTRBNK,ITRMAJ,NTIME,NORIA,
+     -      NASIMP,JIORD,NISIMP,NMQUAD,NCANG,IENANG
+       REAL TIMSIG,SIGNAL,TCLUST,SCLUST,ACLUST,BCLUST,FCLUST,
+     -      AVALAN,TSTART,TDEV,PRSTHR,
+     -      TRABNK,TRAVEC
+       CHARACTER*(MXCHAR) FCNANG
+       CHARACTER*12 AVATYP
+       CHARACTER*3 FCELTP
+       COMMON /SIGDAT/ TIMSIG(MXLIST),SIGNAL(MXLIST,MXSW,2),
+     -      AVALAN(2),TRAVEC(MXLIST),
+     -      TRABNK(MXLIST,9),TSTART,TDEV,PRSTHR,
+     -      TCLUST,SCLUST,ACLUST,BCLUST,FCLUST,ICLUST,NPAIR,
+     -      NFOUR,ITRMAJ,JIORD,NISIMP,NMQUAD,IENANG,NTIME,NORIA,
+     -      MFEXP,MXMIN,MXMAX,MYMIN,MYMAX,NTRBNK,NASIMP,NCANG,
+     -      TRASET,TRAFLG(9),FPERX,FPERY,LCROSS,LITAIL,LDTAIL,LRTAIL,
+     -      LEPULS,LIPULS,SIGSET,RESSET
+       COMMON /SIGCHR/ FCELTP,AVATYP,FCNANG
+       LOGICAL         LINPUT,LCELPR,LCELPL,LWRMRK,LISOCL,LCHGCH,
+     -         LDRPLT,LDRPRT,LCLPRT,LCLPLT,LMAPCH,LCNTAM,
+     -         LDEBUG,LIDENT,LKEYPL,LRNDMI,LPROPR,LPROF,LGSTOP,LGSIG,
+     -         LSYNCH,LINPRD
+       INTEGER LUNOUT,JFAIL,JEXMEM
+       COMMON /PRTPLT/ LINPUT,LCELPR,LCELPL,LWRMRK,LISOCL,LCHGCH,
+     -         LDRPLT,LDRPRT,LCLPRT,LCLPLT,LMAPCH,LCNTAM,
+     -         LDEBUG,LIDENT,LKEYPL,LRNDMI,LPROPR,LPROF,LGSTOP,LGSIG,
+     -         LSYNCH,LINPRD,LUNOUT,JFAIL,JEXMEM
+       CHARACTER*(MXCHAR) STRING
+       CHARACTER*80       CELIDR,GASIDR
+       CHARACTER*8        MEMBER
+       CHARACTER*3        TYPER
+       CHARACTER*(MXNAME) FILE
+       LOGICAL DSNCMP,EXIS,POLARR,TUBER,GASOKR(8)
+       EXTERNAL DSNCMP
+*** Identify the routine, if requested.
+       IF(LIDENT)PRINT *,' /// ROUTINE DLCTRG ///'
+*** Initialise IFAIL on 1 (i.e. fail).
+       IFAIL=1
+       FILE=' '
+       MEMBER='*'
+       NCFILE=8
+       NCMEMB=1
+*** First decode the argument string, setting file name + member name.
+       CALL INPNUM(NWORD)
+*   If there's only one argument, it's the dataset name.
+       IF(NWORD.GE.2)THEN
+            CALL INPSTR(2,2,STRING,NCFILE)
+            FILE=STRING
+       ENDIF
+*   If there's a second argument, it is the member name.
+       IF(NWORD.GE.3)THEN
+            CALL INPSTR(3,3,STRING,NCMEMB)
+            MEMBER=STRING
+       ENDIF
+*   Check the various lengths.
+       IF(NCFILE.GT.MXNAME)THEN
+            PRINT *,' !!!!!! DLCTRG WARNING : The file name is'//
+     -           ' truncated to MXNAME (=',MXNAME,') characters.'
+            NCFILE=MIN(NCFILE,MXNAME)
+       ENDIF
+       IF(NCMEMB.GT.8)THEN
+            PRINT *,' !!!!!! DLCTRG WARNING : The member name is'//
+     -           ' shortened to ',MEMBER,', first 8 characters.'
+            NCMEMB=MIN(NCMEMB,8)
+       ELSEIF(NCMEMB.LE.0)THEN
+            PRINT *,' !!!!!! DLCTRG WARNING : The member'//
+     -           ' name has zero length, replaced by "*".'
+            MEMBER='*'
+            NCMEMB=1
+       ENDIF
+*   Reject the empty file name case.
+       IF(FILE.EQ.' '.OR.NWORD.EQ.1)THEN
+            PRINT *,' !!!!!! DLCTRG WARNING : GET must be at least'//
+     -           ' followed by a dataset name ; no data are read.'
+            RETURN
+       ENDIF
+*   If there are even more args, warn they are ignored.
+       IF(NWORD.GT.3)PRINT *,' !!!!!! DLCTRG WARNING : GET takes'//
+     -     ' at most two arguments (dataset and member); rest ignored.'
+*** Open the dataset and inform DSNLOG.
+       CALL DSNOPN(FILE,NCFILE,12,'READ-LIBRARY',IFAIL1)
+       IF(IFAIL1.NE.0)THEN
+            PRINT *,' !!!!!! DLCTRG WARNING : Opening ',FILE(1:NCFILE),
+     -           ' failed ; track data are not read.'
+            RETURN
+       ENDIF
+       CALL DSNLOG(FILE,'Track data','Sequential','Read only ')
+       IF(LDEBUG)PRINT *,' ++++++ DLCTRG DEBUG   : Dataset ',
+     -      FILE(1:NCFILE),' opened on unit 12 for seq read.'
+*   Locate the pointer on the header of the requested member.
+       CALL DSNLOC(MEMBER,NCMEMB,'TRACK   ',12,EXIS,'RESPECT')
+       IF(.NOT.EXIS)THEN
+            CALL DSNLOC(MEMBER,NCMEMB,'TRACK   ',12,EXIS,'IGNORE')
+            IF(EXIS)THEN
+                 PRINT *,' ###### DLCTRG ERROR   : Track information ',
+     -                MEMBER(1:NCMEMB),' has been deleted from ',
+     -                FILE(1:NCFILE),'; not read.'
+            ELSE
+                 PRINT *,' ###### DLCTRG ERROR   : Track information ',
+     -                MEMBER(1:NCMEMB),' not found on ',FILE(1:NCFILE)
+            ENDIF
+            CLOSE(UNIT=12,IOSTAT=IOS,ERR=2030)
+            RETURN
+       ENDIF
+*** Check that the member is acceptable.
+       READ(12,'(A80)',END=2000,IOSTAT=IOS,ERR=2010) STRING
+       IF(LDEBUG)THEN
+            PRINT *,' ++++++ DLCTRG DEBUG   : Dataset header',
+     -              ' record follows:'
+            PRINT *,STRING
+       ENDIF
+       IF(DSNCMP('02-04-96',STRING(11:18)))THEN
+            PRINT *,' !!!!!! DLCTRG WARNING : Member ',STRING(32:39),
+     -           ' can not be read because of a change in format.'
+            CLOSE(UNIT=12,STATUS='KEEP',IOSTAT=IOS,ERR=2030)
+            RETURN
+       ENDIF
+       WRITE(LUNOUT,'(''  Member '',A8,'' was created on '',A8,
+     -      '' at '',A8/''  Remarks: '',A29)')
+     -      STRING(32:39),STRING(11:18),STRING(23:30),STRING(51:79)
+*** Read the member, start with the cell information.
+       READ(12,'(/9X,A)',END=2000,IOSTAT=IOS,ERR=2010) CELIDR
+       READ(12,'(9X,I10,7X,A3,I2,8X,L1,7X,L1)',
+     -      END=2000,IOSTAT=IOS,ERR=2010)
+     -      NWIRER,TYPER,ICTYPR,POLARR,TUBER
+*   Compare this with the present cell data.
+       IF(CELLID.NE.CELIDR.OR.NWIRE.NE.NWIRER.OR.TYPE.NE.TYPER.OR.
+     -      ICTYPE.NE.ICTYPR.OR.
+     -      (POLAR.AND..NOT.POLARR).OR.
+     -      (.NOT.POLAR.AND.POLARR).OR.
+     -      (TUBE.AND..NOT.TUBER).OR.
+     -      (.NOT.TUBE.AND.TUBER))THEN
+            PRINT *,' !!!!!! DLCTRG WARNING : The track on the file'//
+     -           ' is not'
+            PRINT *,'                         compatible with your'//
+     -           ' current cell.'
+       ENDIF
+*   Next read the gas information.
+       READ(12,'(/9X,A)',END=2000,IOSTAT=IOS,ERR=2010) GASIDR
+       READ(12,'(7X,I10,8X,8L1)',END=2000,IOSTAT=IOS,ERR=2010)
+     -      NGASR,(GASOKR(I),I=1,8)
+*   Compare these bits of information with the present information.
+       IGASCH=0
+       DO 210 I=1,8
+       IF((GASOK(I).AND..NOT.GASOKR(I)).OR.
+     -      (.NOT.GASOK(I).AND.GASOKR(I)))IGASCH=1
+210    CONTINUE
+       IF(GASID.NE.GASIDR.OR.NGAS.NE.NGASR.OR.IGASCH.NE.0)THEN
+            PRINT *,' !!!!!! DLCTRG WARNING : The track on the file'//
+     -           ' is not'
+            PRINT *,'                         compatible with your',
+     -           ' current gas.'
+       ENDIF
+*   Now reset the TRASET flag.
+       TRASET=.FALSE.
+*   Next pick up the track.
+       READ(12,'(8X,6E15.8)',END=2000,IOSTAT=IOS,ERR=2010)
+     -      XT0,YT0,ZT0,XT1,YT1,ZT1
+       READ(12,'(22X,I3/)',END=2000,IOSTAT=IOS,ERR=2010) ITRMAJ
+       TRFLAG(1)=.TRUE.
+*   And read the track bank information.
+       READ(12,'(9X,9L1,9X,I10//)',END=2000,IOSTAT=IOS,ERR=2010)
+     -      (TRAFLG(J),J=1,9),NTRBNK
+       DO 220 I=1,NTRBNK
+       READ(12,'(1X,3E15.8/1X,5E15.8,I10,E15.8)',END=2000,IOSTAT=IOS,
+     -      ERR=2010) (TRABNK(I,J),J=1,7),TRAVEC(I),ISTAT,TRABNK(I,9)
+       TRABNK(I,8)=REAL(ISTAT)
+220    CONTINUE
+*   Close the file after the operation.
+       CLOSE(UNIT=12,STATUS='KEEP',IOSTAT=IOS,ERR=2030)
+*** Things are probably OK, tell calling routine and common block.
+       IFAIL=0
+       TRASET=.TRUE.
+*** Register the amount of CPU time used for reading.
+       CALL TIMLOG('Reading track data from a dataset:      ')
+       RETURN
+*** Handle the I/O error conditions.
+2000   CONTINUE
+       PRINT *,' ###### DLCTRG ERROR   : EOF encountered while reading',
+     -      ' ',FILE(1:NCFILE),' from unit 12 ; no track data read.'
+       CALL INPIOS(IOS)
+       CLOSE(UNIT=12,STATUS='KEEP',IOSTAT=IOS,ERR=2030)
+       RETURN
+2010   CONTINUE
+       PRINT *,' ###### DLCTRG ERROR   : I/O error while reading ',
+     -      FILE(1:NCFILE),' from unit 12 ; no track data read.'
+       CALL INPIOS(IOS)
+       CLOSE(UNIT=12,STATUS='KEEP',IOSTAT=IOS,ERR=2030)
+       RETURN
+2030   CONTINUE
+       PRINT *,' ###### DLCTRG ERROR   : Dataset ',FILE(1:NCFILE),' on',
+     -      ' unit 12 cannot be closed ; results not predictable.'
+       CALL INPIOS(IOS)
+       END

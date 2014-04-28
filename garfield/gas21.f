@@ -1,0 +1,469 @@
+CDECK  ID>, GAS21.
+      SUBROUTINE GAS21(Q,QIN,NIN,E,EIN,NAME,VIRIAL,EOBY
+     /,PEQEL,PEQIN,KEL,KIN,SCRPT)
+      IMPLICIT REAL*8 (A-H,O-Z)
+       DOUBLE PRECISION PIR2,ECHARG,EMASS,AMU,BOLTZ,BOLTZJ,
+     -      AWB,ALOSCH,ABZERO,ATMOS
+       PARAMETER(PIR2=8.79735534D-17)
+       PARAMETER(ECHARG=1.602176462D-19)
+       PARAMETER(EMASS=9.10938188D-31)
+       PARAMETER(AMU=1.66053873D-27)
+       PARAMETER(BOLTZ=8.617342D-5)
+       PARAMETER(BOLTZJ=1.3806503D-23)
+       PARAMETER(AWB=1.758820174D10)
+       PARAMETER(ALOSCH=2.6867775D19)
+       PARAMETER(ABZERO=273.15D0)
+       PARAMETER(ATMOS=760.0D0)
+       INTEGER NGAS,NSTEP,IDBG
+       DOUBLE PRECISION EFINAL,ESTEP,AKT,ARY,TEMPC,TORR
+       PARAMETER(ARY=13.60569172)
+       COMMON/INPT/NGAS,NSTEP,EFINAL,ESTEP,AKT,TEMPC,TORR,IDBG
+*-----------------------------------------------------------------------
+*   MAGPAR - Interface parameters for gas mixing with Magboltz.
+*   (Last changed on  2/ 3/08.)
+*-----------------------------------------------------------------------
+       INTEGER MXGNAM
+       PARAMETER(MXGNAM=60)
+       DOUBLE PRECISION FRAMIX
+       LOGICAL LF0PLT,LCSPLT,LGKEEP,LBMCPR
+       COMMON /MAGPAR/ FRAMIX(MXGNAM),LF0PLT,LCSPLT,LGKEEP,LBMCPR
+       LOGICAL         LINPUT,LCELPR,LCELPL,LWRMRK,LISOCL,LCHGCH,
+     -         LDRPLT,LDRPRT,LCLPRT,LCLPLT,LMAPCH,LCNTAM,
+     -         LDEBUG,LIDENT,LKEYPL,LRNDMI,LPROPR,LPROF,LGSTOP,LGSIG,
+     -         LSYNCH,LINPRD
+       INTEGER LUNOUT,JFAIL,JEXMEM
+       COMMON /PRTPLT/ LINPUT,LCELPR,LCELPL,LWRMRK,LISOCL,LCHGCH,
+     -         LDRPLT,LDRPRT,LCLPRT,LCLPLT,LMAPCH,LCNTAM,
+     -         LDEBUG,LIDENT,LKEYPL,LRNDMI,LPROPR,LPROF,LGSTOP,LGSIG,
+     -         LSYNCH,LINPRD,LUNOUT,JFAIL,JEXMEM
+      DIMENSION PEQEL(6,2048),PEQIN(220,2048),KIN(220),KEL(6)
+      DIMENSION Q(6,2048),QIN(220,2048),E(6),EIN(220)
+      DIMENSION XEN(57),YXSEC(57),XROT0(57),YROT0(57),XROT1(47),YROT1(47
+     /),XROT2(32),YROT2(32),XROT3(32),YROT3(32),XVIB1(40),YVIB1(40),
+     /XVIB2(39),YVIB2(39),XVIB3(16),YVIB3(16),XVIB4(15),YVIB4(15),
+     /XEXC1(20),YEXC1(20),XEXC2(23),YEXC2(23),XATT(18),YATT(18),
+     /XION(72),YION(72),PJ(5)
+      CHARACTER*30 SCRPT(226)
+      CHARACTER*15 NAME
+C --------------------------------------------------------------
+C ELASTIC MT
+      DATA XEN/0.00,.001,.003,.005,.007,0.01,0.02,0.03,0.04,.046,
+     /0.05,0.06,0.07,0.08,0.09,0.10,0.13,0.15,0.20,0.30,
+     /0.40,0.50,0.60,0.70,0.90,1.00,1.10,1.40,1.50,1.60,
+     /1.80,2.00,2.50,3.00,4.00,5.00,6.00,8.00,10.0,15.0,
+     /20.0,30.0,40.0,50.0,60.0,80.0,100.,150.,200.,300.,
+     /400.,500.,600.,800.,1000.,10000.,100000./
+      DATA YXSEC/7.20,7.25,7.35,7.45,7.56,7.72,8.14,8.56,8.98,9.10,
+     /9.27,9.53,9.79,10.04,10.25,10.47,11.08,11.43,12.06,13.00,
+     /13.71,14.45,15.19,15.64,16.14,16.47,16.84,18.10,18.42,18.59,
+     /18.15,17.90,17.30,16.40,13.80,11.80,9.800,7.20,5.10,2.80,
+     /1.80,0.95,0.64,0.45,0.34,0.22,0.15,0.07,.043,.022,
+     /.014,.010,.006,.004,.002,.0002,.00002/
+C-----------------------------------------------------------------------
+C ROTATION J=0-2
+      DATA XROT0/.0439,.046,.047,.048,.049,.050,.051,.054,.055,
+     /.060,
+     /.065,.070,.080,.090,0.10,0.11,0.12,0.13,0.14,0.15,
+     /0.20,0.25,0.30,0.35,0.40,0.45,0.50,0.55,0.60,0.65,
+     /0.70,0.80,0.90,1.00,1.10,1.20,1.35,1.50,1.75,2.00,
+     /2.50,3.00,3.50,4.00,4.50,5.00,6.00,7.00,8.00,9.00,
+     /10.0,15.0,20.0,100.,1000.,10000.,100000./
+      DATA YROT0/0.00,.0206,.0276,.0286,.0297,.0308,.0310,.0330,.0340,
+     /.0394,
+     /.0452,.0507,.0614,.0680,.0740,.0790,.0835,.088,.0925,.0970,
+     /.115,.132,.152,.175,.200,.228,.260,.291,.323,.359,
+     /.394,.469,.555,.636,.716,.796,.916,1.036,1.203,1.370,
+     /1.585,1.704,1.755,1.758,1.732,1.689,1.579,1.462,1.350,1.248,
+     /1.156,0.730,0.44,0.05,.0015,.0005,.00015/
+C-----------------------------------------------------------------------
+C ROTATION J=1-3
+      DATA XROT1/0.0727,.075,.080,.085,.090,.095,0.10,0.11,0.12,0.13,
+     /0.15,0.20,0.25,0.30,0.35,0.40,0.45,0.50,0.56,0.60,
+     /0.66,0.70,0.80,0.90,1.01,1.20,1.40,1.60,1.80,2.00,
+     /2.50,3.00,3.50,4.00,4.50,5.00,6.00,7.00,8.00,9.00,
+     /10.0,15.0,20.0,100.,1000.,10000.,100000./
+      DATA YROT1/0.00,.0085,.0149,.0203,.0238,.0266,.0282,.0351,.0403,
+     /.0449,.0520,.0604,.0719,.0870,.1029,.1191,.1361,.1543,.1773,.1944,
+     /.2212,.2396,.2839,.3328,.3842,.489,.569,.658,.743,.818,
+     /.952,1.020,1.046,1.050,1.036,1.011,.946,.876,.809,.748,
+     /.694,.440,.265,0.03,0.001,.0001,.00001/
+C-----------------------------------------------------------------------
+C ROTATION J=2-4  (ALSO USE THESE VALUES FOR 4-6 TRANSITION)
+      DATA XROT2/0.1008,0.15,0.20,0.25,0.30,0.35,0.40,0.45,0.50,0.60,
+     /0.70,0.80,0.90,1.00,1.50,2.00,2.50,3.00,3.50,4.00,
+     /4.50,5.00,5.50,6.00,7.00,8.00,10.0,20.0,100.,1000.,
+     /10000.,100000./
+      DATA YROT2/0.00,.0249,.0367,.0475,.0577,.0694,.0834,.1003,.1192,
+     /.145,.178,.216,.256,.299,.436,.543,.600,.649,.670,.672,
+     /.662,.646,.627,.605,.561,.517,.444,0.17,.017,.0007,
+     /.00007,.000007/
+C-----------------------------------------------------------------------
+C ROTATION J=3-5  (ALSO USE THESE VALUES  FOR 5-7 TRANSITION)
+      DATA XROT3/0.1280,0.15,0.20,0.25,0.30,0.35,0.40,0.45,0.50,0.60,
+     /0.70,0.80,0.90,1.00,1.50,2.00,2.50,3.00,3.50,4.00,
+     /4.50,5.00,5.50,6.00,7.00,8.00,10.0,20.0,100.,1000.,
+     /10000.,100000./
+      DATA YROT3/0.00,.019,.033,.043,.050,.058,.066,.075,.085,.104,
+     /.128,.154,.185,.214,.334,.565,.700,.750,.825,.828,
+     /.818,.797,.774,.747,.692,.640,.548,0.18,0.02,.0007,
+     /.00007,.000007/
+C-----------------------------------------------------------------------
+C VIBRATION V=0-1 DELTAJ=0  ROTATIONALLY ELASTIC
+      DATA XVIB1/0.516,0.56,0.58,0.60,0.65,0.75,0.85,0.95,1.00,1.05,
+     /1.10,1.15,1.20,1.30,1.40,1.60,1.80,2.20,2.40,2.60,
+     /3.00,3.50,4.00,4.50,5.00,6.00,7.00,8.00,9.00,10.0,
+     /11.0,12.0,13.0,14.0,15.0,20.0,100.,1000.,10000.,100000./
+      DATA YVIB1/0.00,.0007,.0025,.0063,.0070,.0103,.0164,.0269,.0331,
+     /.0386,.0435,.0483,.0525,.0626,.0707,.0926,.1166,.1556,.1635,.1719,
+     /.1916,.2008,.1860,.1630,.1460,.1160,.0876,.0637,.0506,.0376,
+     /.0292,.0215,.0180,.0170,.0150,.0092,.0018,.00006,.000006,.0000007/
+C-----------------------------------------------------------------------
+C VIBRATION V=0-1 DELTAJ=2  ROTATIONALLY INELASTIC
+      DATA XVIB2/0.558,.575,0.60,0.65,0.75,0.85,0.95,1.00,1.05,1.10,
+     /1.15,1.20,1.30,1.40,1.60,1.80,2.20,2.40,2.60,3.00,
+     /3.50,4.00,4.50,5.00,6.00,7.00,8.00,9.00,10.0,11.0,
+     /12.0,13.0,14.0,15.0,20.0,100.,1000.,10000.,100000./
+      DATA YVIB2/0.00,.0002,.0016,.0027,.0056,.0107,.0197,.0255,.0305,
+     /.0356,.0408,.0459,.0579,.0671,.0954,.1279,.1829,.1963,.2141,.2494,
+     /.2672,.2540,.2270,.2040,.1640,.1224,.0879,.0684,.0498,.0388,
+     /.0285,.0200,.0150,.0100,.0062,.0012,.00004,.000004,.0000004/
+C-----------------------------------------------------------------------
+C  VIBRATION V=0-2
+      DATA XVIB3/1.023,1.34,1.50,2.00,3.00,4.00,5.00,6.00,8.00,10.0,
+     /15.0,20.0,100.,1000.,10000.,100000./
+      DATA YVIB3/0.00,.001,.002,.014,.035,.037,.035,.029,.021,.014,
+     /.002,.001,.0003,.00001,.000001,.0000001/
+C-----------------------------------------------------------------------
+C  VIBRATION V=0-3
+      DATA XVIB4/1.480,1.95,2.00,3.00,4.00,5.00,6.00,8.00,10.0,15.0,
+     /20.0,100.,1000.,10000.,100000./
+      DATA YVIB4/0.00,.001,.0012,.0036,.0037,.0035,.0027,.0019,.0012,
+     /.0002,.0001,.00003,.000001,.0000001,.00000001/
+C-----------------------------------------------------------------------
+C EXCITATION TO TRIPLET STATES (DISSOCIATION)
+      DATA XEXC1/8.85,8.92,9.34,10.0,11.0,12.0,15.0,20.0,25.0,30.0,
+     /40.0,50.0,60.0,80.0,100.,150.,200.,1000.,10000.,100000./
+      DATA YEXC1/0.00,0.01,0.05,0.10,0.23,0.42,0.64,0.57,0.35,0.23,
+     /0.10,.051,.031,.013,.006,.0015,.0006,.0001,.00002,.000004/
+C  EXCITATION TO SINGLET STATES
+      DATA XEXC2/12.0,12.13,13.4,15.0,17.0,20.0,25.0,30.0,40.0,50.0,
+     /60.0,80.0,100.,150.,200.,300.,400.,500.,600.,800.,
+     /1000.,10000.,100000./
+      DATA YEXC2/0.00,0.10,0.10,0.27,0.44,0.64,0.95,1.12,1.19,1.23,
+     /1.26,1.17,1.10,0.88,0.78,0.64,0.55,0.47,0.42,0.34,
+     /0.27,0.06,.015/
+C-----------------------------------------------------------------------
+      DATA XATT/7.00,8.00,9.00,10.0,11.0,12.0,13.0,14.0,15.0,16.0,
+     /17.0,18.0,30.0,60.0,100.,1000.,10000.,100000./
+      DATA YATT/0.00,.000032,.00009,.000128,.000118,.000075,.000052,
+     /.00021,.000087,.000085,.00009,.0001,.00005,.00002,.00001,
+     /.000001,.0000001,.00000001/
+C-----------------------------------------------------------------------
+      DATA XION/15.427,16.0,16.5,17.0,17.5,18.0,18.5,19.0,19.5,20.0,
+     /20.5,21.0,21.5,22.0,22.5,23.0,23.5,24.0,24.5,25.0,
+     /25.5,26.0,28.0,30.0,32.0,34.0,36.0,38.0,40.0,45.0,
+     /50.0,55.0,60.0,65.0,70.0,75.0,80.0,85.0,90.0,95.0,
+     /100.,105.,110.,115.,120.,125.,130.,135.,140.,145.,
+     /150.,160.,180.,200.,250.,300.,350.,400.,450.,500.,
+     /550.,600.,650.,700.,750.,800.,850.,900.,950.,1000.,
+     /10000.,100000./
+      DATA YION/0.00,.0299,.0607,.0924,.123,.156,.187,.220,.249,.280,
+     /.310,.336,.362,.390,.413,.439,.461,.484,.505,.524,
+     /.544,.563,.632,.688,.736,.776,.812,.840,.866,.913,
+     /.941,.959,.968,.971,.971,.970,.964,.958,.948,.934,
+     /.924,.916,.903,.891,.878,.864,.853,.844,.830,.821,
+     /.813,.790,.752,.715,.636,.573,.518,.476,.438,.406,
+     /.378,.354,.334,.315,.298,.283,.271,.260,.250,.240,
+     /.060,.015/
+C----------------------------------------------------------------------
+      NAME='H2 (2001)'
+C --------------------------------------------------------------------
+C  CALCULATE FRACTIONAL POPULATION DENSITY FOR ROTATIONAL STATES
+      B0=0.00753936
+      DO 111 K=1,5,2
+ 111  PJ(K)=3*(2*K+1)*EXP(-K*(K+1)*B0/AKT)
+      DO 112 K=2,4,2
+ 112  PJ(K)=(2*K+1)*EXP(-K*(K+1)*B0/AKT)
+      SUM=1.0
+      DO 113 K=1,5
+ 113  SUM=SUM+PJ(K)
+      FROT0=1.0/SUM
+      FROT1=PJ(1)/SUM
+      FROT2=PJ(2)/SUM
+      FROT3=PJ(3)/SUM
+      FROT4=PJ(4)/SUM
+      FROT5=PJ(5)/SUM
+C     IF(LBMCPR)WRITE(LUNOUT,88) FROT0,FROT1,FROT2,FROT3,FROT4,FROT5
+C  88 FORMAT(3X,' FROT0=',F9.6,' FROT1=',F9.6,' FROT2=',F9.6,' FROT3=',
+C    /F9.6,' FROT4=',F9.6,' FROT5=',F9.6)
+C-----------------------------------------------------------------------
+      NIN=14
+      DO 1 J=1,6
+    1 KEL(J)=0
+      DO 2 J=1,NIN
+    2 KIN(J)=0
+      NDATA=57
+      NROT0=57
+      NROT1=47
+      NROT2=32
+      NROT3=32
+      NVIB1=40
+      NVIB2=39
+      NVIB3=16
+      NVIB4=15
+      NEXC1=20
+      NEXC2=23
+      NION=72
+      NATT=18
+      E(1)=0.0
+      E(2)=2.0*EMASS/(2.015650*AMU)
+      E(3)=15.427
+      E(4)=0.0
+      E(5)=0.0
+      E(6)=0.0
+      EOBY=8.30
+      EIN(1)=-.0439
+      EIN(2)=-.0727
+      EIN(3)=-.1008
+      EIN(4)=-.128
+      EIN(5)=0.0439
+      EIN(6)=0.0727
+      EIN(7)=0.1008
+      EIN(8)=0.128
+      EIN(9)=0.516
+      EIN(10)=0.558
+      EIN(11)=1.023
+      EIN(12)=1.480
+      EIN(13)=8.85
+      EIN(14)=12.0
+      SCRPT(1)='                              '
+      SCRPT(2)=' ELASTIC       HYDROGEN       '
+      SCRPT(3)=' IONISATION    ELOSS= 15.427  '
+      SCRPT(4)=' ATTACHMENT                   '
+      SCRPT(5)='                              '
+      SCRPT(6)='                              '
+      SCRPT(7)=' ROT 2-0       ELOSS= -0.0439 '
+      SCRPT(8)=' ROT 3-1       ELOSS= -0.0727 '
+      SCRPT(9)=' ROT 4-2       ELOSS= -0.1008 '
+      SCRPT(10)=' ROT 5-3       ELOSS= -0.128  '
+      SCRPT(11)=' ROT 0-2       ELOSS=  0.0439 '
+      SCRPT(12)=' ROT 1-3       ELOSS=  0.0727 '
+      SCRPT(13)=' ROT 2-4 + 4-6 ELOSS=  0.1008 '
+      SCRPT(14)=' ROT 3-5 + 5-7 ELOSS=  0.128  '
+      SCRPT(15)=' VIB V1 DJ=0   ELOSS=  0.516  '
+      SCRPT(16)=' VIB V1 DJ=2   ELOSS=  0.558  '
+      SCRPT(17)=' VIB 2V1       ELOSS=  1.023  '
+      SCRPT(18)=' VIB 3V1       ELOSS=  1.480  '
+      SCRPT(19)=' EXC TRPLT     ELOSS=  8.85   '
+      SCRPT(20)=' EXC SNGLT     ELOSS= 12.0    '
+      EN=-ESTEP/2.0D0
+      DO 900 I=1,NSTEP
+      EN=EN+ESTEP
+      DO 10 J=2,NDATA
+      IF(EN.LE.XEN(J)) GO TO 20
+   10 CONTINUE
+      J=NDATA
+   20 A=(YXSEC(J)-YXSEC(J-1))/(XEN(J)-XEN(J-1))
+      B=(XEN(J-1)*YXSEC(J)-XEN(J)*YXSEC(J-1))/(XEN(J-1)-XEN(J))
+      Q(2,I)=(A*EN+B)*1.0D-16
+C
+      Q(3,I)=0.0D0
+      IF(EN.LT.E(3)) GO TO 200
+      DO 110 J=2,NION
+      IF(EN.LE.XION(J)) GO TO 120
+  110 CONTINUE
+      J=NION
+  120 A=(YION(J)-YION(J-1))/(XION(J)-XION(J-1))
+      B=(XION(J-1)*YION(J)-XION(J)*YION(J-1))/(XION(J-1)-XION(J))
+      Q(3,I)=(A*EN+B)*1.D-16
+  200 CONTINUE
+C
+      Q(4,I)=0.0D0
+      IF(EN.LT.XATT(1)) GO TO 300
+      DO 210 J=2,NATT
+      IF(EN.LE.XATT(J)) GO TO 220
+  210 CONTINUE
+      J=NATT
+  220 A=(YATT(J)-YATT(J-1))/(XATT(J)-XATT(J-1))
+      B=(XATT(J-1)*YATT(J)-XATT(J)*YATT(J-1))/(XATT(J-1)-XATT(J))
+      Q(4,I)=(A*EN+B)*1.D-16
+  300 CONTINUE
+      Q(5,I)=0.0D0
+      Q(6,I)=0.0D0
+C---------------------------------------------------------------------
+C                    SUPERELASTIC 2-0
+      QIN(1,I)=0.0D0
+      IF(EN.LE.0.0) GO TO 1100
+      DO 1010 J=2,NROT0
+      IF((EN+EIN(5)).LE.XROT0(J)) GO TO 1020
+ 1010 CONTINUE
+      J=NROT0
+ 1020 A=(YROT0(J)-YROT0(J-1))/(XROT0(J)-XROT0(J-1))
+      B=(XROT0(J-1)*YROT0(J)-XROT0(J)*YROT0(J-1))/(XROT0(J-1)-XROT0(J))
+      QIN(1,I)=FROT2*0.2*(EN+EIN(5))*(A*(EN+EIN(5))+B)*1.D-16/EN
+ 1100 CONTINUE
+C                    SUPERELASTIC 3-1
+      QIN(2,I)=0.0D0
+      IF(EN.LE.0.0) GO TO 1200
+      DO 1110 J=2,NROT1
+      IF((EN+EIN(6)).LE.XROT1(J)) GO TO 1120
+ 1110 CONTINUE
+      J=NROT1
+ 1120 A=(YROT1(J)-YROT1(J-1))/(XROT1(J)-XROT1(J-1))
+      B=(XROT1(J-1)*YROT1(J)-XROT1(J)*YROT1(J-1))/(XROT1(J-1)-XROT1(J))
+      QIN(2,I)=FROT3*(3.0/7.0)*(EN+EIN(6))*(A*(EN+EIN(6))+B)*1.D-16/EN
+ 1200 CONTINUE
+C                    SUPERELASTIC 4-2
+      QIN(3,I)=0.0D0
+      IF(EN.LE.0.0) GO TO 1250
+      DO 1210 J=2,NROT2
+      IF((EN+EIN(7)).LE.XROT2(J)) GO TO 1220
+ 1210 CONTINUE
+      J=NROT2
+ 1220 A=(YROT2(J)-YROT2(J-1))/(XROT2(J)-XROT2(J-1))
+      B=(XROT2(J-1)*YROT2(J)-XROT2(J)*YROT2(J-1))/(XROT2(J-1)-XROT2(J))
+      QIN(3,I)=FROT4*(5.0/9.0)*(EN+EIN(7))*(A*(EN+EIN(7))+B)*1.D-16/EN
+ 1250 CONTINUE
+C                    SUPERELASTIC 5-3
+      QIN(4,I)=0.0D0
+      IF(EN.LE.0.0) GO TO 1290
+      DO 1260 J=2,NROT3
+      IF((EN+EIN(8)).LE.XROT3(J)) GO TO 1270
+ 1260 CONTINUE
+      J=NROT3
+ 1270 A=(YROT3(J)-YROT3(J-1))/(XROT3(J)-XROT3(J-1))
+      B=(XROT3(J-1)*YROT3(J)-XROT3(J)*YROT3(J-1))/(XROT3(J-1)-XROT3(J))
+      QIN(4,I)=FROT5*(7.0/11.)*(EN+EIN(8))*(A*(EN+EIN(8))+B)*1.D-16/EN
+ 1290 CONTINUE
+C                      ROTATION 0-2
+      QIN(5,I)=0.0D0
+      IF(EN.LE.EIN(5)) GO TO 1400
+      DO 1310 J=2,NROT0
+      IF(EN.LE.XROT0(J)) GO TO 1320
+ 1310 CONTINUE
+      J=NROT0
+ 1320 A=(YROT0(J)-YROT0(J-1))/(XROT0(J)-XROT0(J-1))
+      B=(XROT0(J-1)*YROT0(J)-XROT0(J)*YROT0(J-1))/(XROT0(J-1)-XROT0(J))
+      QIN(5,I)=(A*EN+B)*1.D-16*FROT0
+ 1400 CONTINUE
+C                        ROTATION 1-3
+      QIN(6,I)=0.0D0
+      IF(EN.LE.EIN(6)) GO TO 1401
+      DO 1311 J=2,NROT1
+      IF(EN.LE.XROT1(J)) GO TO 1321
+ 1311 CONTINUE
+      J=NROT1
+ 1321 A=(YROT1(J)-YROT1(J-1))/(XROT1(J)-XROT1(J-1))
+      B=(XROT1(J-1)*YROT1(J)-XROT1(J)*YROT1(J-1))/(XROT1(J-1)-XROT1(J))
+      QIN(6,I)=(A*EN+B)*1.D-16*FROT1
+ 1401 CONTINUE
+C                      ROTATION 2-4 +4-6
+      QIN(7,I)=0.0D0
+      IF(EN.LE.EIN(7)) GO TO 1402
+      DO 1312 J=2,NROT2
+      IF(EN.LE.XROT2(J)) GO TO 1322
+ 1312 CONTINUE
+      J=NROT2
+ 1322 A=(YROT2(J)-YROT2(J-1))/(XROT2(J)-XROT2(J-1))
+      B=(XROT2(J-1)*YROT2(J)-XROT2(J)*YROT2(J-1))/(XROT2(J-1)-XROT2(J))
+      QIN(7,I)=(A*EN+B)*1.D-16*(FROT2+FROT4)
+ 1402 CONTINUE
+C                        ROTATION 3-5 +5-7
+      QIN(8,I)=0.0D0
+      IF(EN.LE.EIN(8)) GO TO 1403
+      DO 1313 J=2,NROT3
+      IF(EN.LE.XROT3(J)) GO TO 1323
+ 1313 CONTINUE
+      J=NROT3
+ 1323 A=(YROT3(J)-YROT3(J-1))/(XROT3(J)-XROT3(J-1))
+      B=(XROT3(J-1)*YROT3(J)-XROT3(J)*YROT3(J-1))/(XROT3(J-1)-XROT3(J))
+      QIN(8,I)=(A*EN+B)*1.D-16*(FROT3+FROT5)
+ 1403 CONTINUE
+C-----------------------------------------------------------------------
+      QIN(9,I)=0.0D0
+      IF(EN.LE.EIN(9)) GO TO 400
+      DO 310 J=2,NVIB1
+      IF(EN.LE.XVIB1(J)) GO TO 320
+  310 CONTINUE
+      J=NVIB1
+  320 A=(YVIB1(J)-YVIB1(J-1))/(XVIB1(J)-XVIB1(J-1))
+      B=(XVIB1(J-1)*YVIB1(J)-XVIB1(J)*YVIB1(J-1))/(XVIB1(J-1)-XVIB1(J))
+      QIN(9,I)=(A*EN+B)*1.D-16
+  400 CONTINUE
+C
+      QIN(10,I)=0.0D0
+      IF(EN.LE.EIN(10)) GO TO 500
+      DO 410 J=2,NVIB2
+      IF(EN.LE.XVIB2(J)) GO TO 420
+  410 CONTINUE
+      J=NVIB2
+  420 A=(YVIB2(J)-YVIB2(J-1))/(XVIB2(J)-XVIB2(J-1))
+      B=(XVIB2(J-1)*YVIB2(J)-XVIB2(J)*YVIB2(J-1))/(XVIB2(J-1)-XVIB2(J))
+      QIN(10,I)=(A*EN+B)*1.D-16
+  500 CONTINUE
+C
+      QIN(11,I)=0.0D0
+      IF(EN.LE.EIN(11)) GO TO 501
+      DO 411 J=2,NVIB3
+      IF(EN.LE.XVIB3(J)) GO TO 421
+  411 CONTINUE
+      J=NVIB3
+  421 A=(YVIB3(J)-YVIB3(J-1))/(XVIB3(J)-XVIB3(J-1))
+      B=(XVIB3(J-1)*YVIB3(J)-XVIB3(J)*YVIB3(J-1))/(XVIB3(J-1)-XVIB3(J))
+      QIN(11,I)=(A*EN+B)*1.D-16
+  501 CONTINUE
+C
+      QIN(12,I)=0.0D0
+      IF(EN.LE.EIN(12)) GO TO 502
+      DO 412 J=2,NVIB4
+      IF(EN.LE.XVIB4(J)) GO TO 422
+  412 CONTINUE
+      J=NVIB4
+  422 A=(YVIB4(J)-YVIB4(J-1))/(XVIB4(J)-XVIB4(J-1))
+      B=(XVIB4(J-1)*YVIB4(J)-XVIB4(J)*YVIB4(J-1))/(XVIB4(J-1)-XVIB4(J))
+      QIN(12,I)=(A*EN+B)*1.D-16
+  502 CONTINUE
+C-----------------------------------------------------------------------
+      QIN(13,I)=0.0D0
+      IF(EN.LE.EIN(13)) GO TO 600
+      DO 510 J=2,NEXC1
+      IF(EN.LE.XEXC1(J)) GO TO 520
+  510 CONTINUE
+      J=NEXC1
+  520 A=(YEXC1(J)-YEXC1(J-1))/(XEXC1(J)-XEXC1(J-1))
+      B=(XEXC1(J-1)*YEXC1(J)-XEXC1(J)*YEXC1(J-1))/(XEXC1(J-1)-XEXC1(J))
+      QIN(13,I)=(A*EN+B)*1.D-16
+  600 CONTINUE
+C
+      QIN(14,I)=0.0D0
+      IF(EN.LE.EIN(14)) GO TO 700
+      DO 610 J=2,NEXC2
+      IF(EN.LE.XEXC2(J)) GO TO 620
+  610 CONTINUE
+      J=NEXC2
+  620 A=(YEXC2(J)-YEXC2(J-1))/(XEXC2(J)-XEXC2(J-1))
+      B=(XEXC2(J-1)*YEXC2(J)-XEXC2(J)*YEXC2(J-1))/(XEXC2(J-1)-XEXC2(J))
+      QIN(14,I)=(A*EN+B)*1.D-16
+  700 CONTINUE
+C---------------------------------------------------------------------
+      Q(1,I)=Q(2,I)+Q(3,I)+Q(4,I)+QIN(1,I)+QIN(2,I)+QIN(3,I)+QIN(4,I)+
+     /QIN(5,I)+QIN(6,I)+QIN(7,I)+QIN(8,I)+QIN(9,I)+QIN(10,I)+QIN(11,I)+
+     /QIN(12,I)+QIN(13,I)+QIN(14,I)
+  900 CONTINUE
+C  SAVE COMPUTE TIME
+      IF(EFINAL.LE.EIN(14)) NIN=13
+      IF(EFINAL.LE.EIN(13)) NIN=12
+      IF(EFINAL.LE.EIN(12)) NIN=11
+      IF(EFINAL.LE.EIN(11)) NIN=10
+      IF(EFINAL.LE.EIN(10)) NIN=9
+      IF(EFINAL.LE.EIN(9)) NIN=8
+      IF(EFINAL.LE.EIN(8)) NIN=7
+      IF(EFINAL.LE.EIN(7)) NIN=6
+      IF(EFINAL.LE.EIN(6)) NIN=5
+      IF(EFINAL.LE.EIN(5)) NIN=4
+      IF(EFINAL.LE.EIN(4)) NIN=3
+      IF(EFINAL.LE.EIN(3)) NIN=2
+      IF(EFINAL.LE.EIN(2)) NIN=1
+      IF(EFINAL.LE.EIN(1)) NIN=0
+C
+      END

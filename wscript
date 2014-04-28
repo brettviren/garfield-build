@@ -1,54 +1,25 @@
 #!/usr/bin/env python
+'''Build the GARFIELD simulation.  
+
+This includes the GARFIELD FORTRAN sources after 'ypatchy' has been
+run on the cradle/card files. 
 '''
-Try to provide a modern version of the absolutely ridiculously archaic
-build for GARFIELD:
-
-http://garfield.web.cern.ch/garfield
-http://ubuntuforums.org/showthread.php?p=10195676#post10195676
-
-I find it amazing that such a messed up build system is still in use....
-
-To find some external packages one may set these environment variables
-(example are mooching off packages found on BNL's RACF):
-
-To find GSL
-
-  PKG_CONFIG_PATH=/afs/rhic.bnl.gov/opt/astro/SL64/lib/pkgconfig
-
-To find CERNLIB
-
-  CERN=/afs/rhic.bnl.gov/asis/x8664_sl5/cern64
-  CERN_LEVEL=pro
-
-or, make sure the "cernlib" script is in your PATH.
-
-
-'''
-garfield_download_url = 'http://cern.ch/rjd/Garfield/'
-cradle_files = [
-    'garfield-7_linux.cra',
-    'garfadd-7_linux.cra',
-    'garfield-8_linux.cra',
-    'garfadd-8_linux.cra',
-    'garfield-9_linux.cra',
-    'garfadd-9_linux.cra',
-]
-card_files = [
-    'garfield-7.car',
-    'heed101garf.car',
-    'magboltz-2.car',
-    'magboltz-3.car',
-    'magboltz-7.car',
-]
-interface_file = 'interface_amd64_linux26.cra'
-
-
-#    help_input
-# http://nebem.web.cern.ch/nebem/files/neBEMV1.8.13.tgz
-# http://cern.ch/garfield/help/garfield.hlp
 
 import os
 import subprocess
+
+nebem_url = 'http://nebem.web.cern.ch/nebem/files/neBEMV1.8.13.tgz'
+from waflib.Configure import urlopen
+if not os.path.exists('V1.8.13'):
+    print 'Preparing neBEM source'
+    fname = os.path.basename(nebem_url)
+    if not os.path.exists(fname):
+        web = urlopen(nebem_url)
+        assert web.getcode() == 200
+        open(fname, 'wb').write(web.read())
+    subprocess.check_call(['tar','-xf',fname])
+    subprocess.check_call('chmod -R u+rwx V1.8.13'.split())
+
 
 def options(opt):
     opt.load('compiler_fc')
@@ -61,14 +32,11 @@ def configure(cfg):
     cernpath = os.environ['PATH'].split(':') +\
         [os.path.expandvars("$CERN/$CERN_LEVEL/bin"), '/cern/pro/bin']
     cfg.find_program('cernlib', var='CERNLIBSCRIPT', path_list=cernpath)
-    cfg.find_program('ypatchy', var='YPATCHY', path_list=cernpath)
-    cfg.find_program('fcasplit', var='FCASPLIT', path_list=cernpath)
 
     if cfg.env.FC_NAME == 'GFORTRAN':
         cfg.env['FCFLAGS'] = '-O3 -fbounds-check -fbackslash'.split()
 
     cfg.check_cfg(package = 'gsl', args=['--cflags', '--libs'])
-    #print 'GSL:', cfg.env.LIB_GSL, cfg.env.LIBPATH_GSL
 
     cfg.check_fortran()
     cfg.check_fortran_verbose_flag()
@@ -76,174 +44,50 @@ def configure(cfg):
     cfg.check_fortran_dummy_main()
     cfg.check_fortran_mangling()
 
-    clibs = subprocess.Popen([cfg.env.CERNLIBSCRIPT, 'graflib/X11,kernlib,mathlib,packlib'],
-                             stdout=subprocess.PIPE).communicate()[0]
-    cfg.env.CERNLIBS = clibs
+    cfg.check_cfg(package = '', path='cernlib', uselib_store='CERN',
+                  args=['graflib/X11,kernlib,mathlib,packlib'])
+
+    #clibs = subprocess.Popen([cfg.env.CERNLIBSCRIPT, 'graflib/X11,kernlib,mathlib,packlib'],
+    # stdout=subprocess.PIPE).communicate()[0]
+    #print 'CERNLIB:', clibs
+    #cfg.env.CERNLIBS = clibs.split()
 #    print 'CERN:', cfg.env.CERNLIBS
-#    print cfg.env.LIB_CERN
-#    print cfg.env.LIBPATH_CERN
+    print 'LIB_CERN:',cfg.env.LIB_CERN
+    print 'LIBPATH_CERN:',cfg.env.LIBPATH_CERN
+    print 'LINKFLAGS_CERN:',cfg.env.LINKFLAGS_CERN
     return
 
 
 
 def build(bld):
-    from waflib import Build
-    bld.post_mode = Build.POST_LAZY
-    fod = bld.path.find_or_declare
 
-    do_downloads(bld, card_files)
-    do_downloads(bld, cradle_files, lambda f: f.replace('_linux.cra','.cra'))
-    do_downloads(bld, [interface_file], lambda f: 'interface.cra')
-        
-    bld(rule = download, target = 'neBEMV1.8.13.tgz',
-        url = 'http://nebem.web.cern.ch/nebem/files/neBEMV1.8.13.tgz', update_outputs = True)
+    bld.shlib(target = 'nebemlib', 
+              includes = ['V1.8.13/include'],
+              cflags = ['-Wall', '-std=c99', '-O3'],
+              source = bld.path.ant_glob([
+                  'V1.8.13/src/NR/*.c',
+                  'V1.8.13/src/Solve/*.c',
+                  'V1.8.13/src/Interface/GarfieldInterface.c',
+                  'V1.8.13/src/Interface/neBEMInterface.c',
+                  'V1.8.13/src/PreProcess/ReTriM.c',
+                  'V1.8.13/src/Vector/Vector.c',
+                  ]))
 
-    bld(rule = 'tar -xf ${SRC[0].abspath()} && chmod -R +rwx V1.8.13/src/Devices/Iarocci',
-        source = 'neBEMV1.8.13.tgz',
-        target = 'V1.8.13/Makefile')
 
-    bemobjs = ['GarfieldInterface.o','neBEMInterface.o','ReTriM.o',
-               'ComputeProperties.o','neBEM.o']
-    bemobj_paths = ['V1.8.13/obj/'+o for o in bemobjs]
+    for what in ['ield','add','int']:
+        bld(features = 'fc fcshlib',
+            fcflags = ['-O3', '-fbounds-check', '-fbackslash'],
+            use = ['nebemlib'],
+            source   = bld.path.ant_glob('garf%s/*.f'%what),
+            target   = 'garf'+what)
 
-    # Build neBEM
-    print bemobj_paths
-    bld(rule = 'cd V1.8.13 && make > make.log 2>&1',
-        source = 'V1.8.13/Makefile',
-        target = bemobj_paths)
-
-    garfieldlib = 'garfieldlib-9'
-    patchy_split(bld, garfieldlib, 
-                 'garfield-9.cra garfield-7.car heed101garf.car magboltz-7.car')
-    garfaddlib = 'garfaddlib-9'
-    patchy_split(bld, garfaddlib,
-                 'garfadd-9.cra garfield-7.car heed101garf.car magboltz-7.car')
-    garfintlib = 'garfintlib-9'
-    patchy_split(bld, garfintlib, 'interface.cra garfield-7.car')
-
-    bld.add_group()
-
-    bld(features = 'find_source fc fcstlib', target = garfieldlib, source_glob='*.f')
-    bld(features = 'find_source fc fcstlib', target = garfaddlib, source_glob='*.f')
-    bld(features = 'find_source fc fcstlib', target = garfintlib, source_glob='*.f')
-
-    linkflags = ['-std=c99'] + bemobj_paths + bld.env.CERNLIBS.split()
-    # print 'LINKFLAGS',linkflags
+    isles_lib = bld.path.find_node('V1.8.13/lib')
     bld(features = 'fc fcprogram',
+        fcflags = ['-O3', '-fbounds-check', '-fbackslash'],
+        includes = ['.'],
+        source   = 'main.f',
         target   = 'garfield-9',
-        use = [garfieldlib, garfaddlib, garfintlib],
-        stlibpath = 'V1.8.13/lib',
-        stlib = ['NR', 'Vector', 'Isles', 'gslcblas', 'gsl', 'm'],
-        linkflags = linkflags)
-    return
-
-# some helpers below
-
-from waflib.TaskGen import feature, before
-@feature('find_source')
-@before('process_source')
-def find_generated_source_files(self):
-    work = self.path.get_bld().find_node(to_list(self.target)[0])
-    self.source = to_list(self.source) + work.ant_glob(self.source_glob)
-
-
-from waflib.Configure import urlopen
-def download(task):
-    gen = task.generator
-    tgt = task.outputs[0]
-    print 'Downloading %s' % gen.url
-    web = urlopen(gen.url)
-    assert web.getcode() == 200
-    tgt.write(web.read(), 'wb')
-
-def do_downloads(bld, files, target_fun = lambda f: f):
-    for f in files:
-        o = target_fun(f)
-        bld(rule = download, target = o, url = garfield_download_url+f,
-            update_outputs = True)
-
-
-from waflib.Utils import to_list
-from waflib.Task import compile_fun
-
-def fcasplit(task):
-    cmd_fun, _ = compile_fun("${FCASPLIT} ${SRC[0].abspath()} > split.log 2>&1")
-    rc = cmd_fun(task)
-    if rc: return rc
-    cwd = task.generator.bld.root.make_node(task.cwd)
-    task.outputs = cwd.ant_glob('*.f')
-
-
-def patchy_split(bld, libname, source):
-    source = to_list(source)
-    name = source[0].replace('.cra','')
-
-    fortnode = bld.path.find_or_declare(name+'.f')
-        
-    cmd = '${YPATCHY} - %s %s - - - - - - - - - :GO > patchy.log|| true' % (name,name)
-    bld(rule = cmd, source = source, target = fortnode)
-
-    work = bld.path.get_bld().make_node(libname)
-    work.mkdir()
-    split_out = work.find_or_declare(name+'.mkfca')
-
-    bld(rule = fcasplit,
-        source = fortnode, target = split_out, cwd = work.abspath())
-
-
-
-
-
-
-
-
-
-
-
-    
-
-# import os
-# from waflib.Utils import to_list
-
-# def generated_fclib(task):
-#     gen = task.generator
-#     bld = gen.bld
-#     work = task.inputs[0].parent
-#     bld(features = 'fc fcstlib',
-#         source = work.ant_glob('*.f'),
-#         target = gen.libname)
-
-
-
-# # http://stackoverflow.com/questions/8505588/how-to-compile-the-c-source-files-generated-in-run-time-using-waf
-# import waflib.TaskGen
-# @waflib.TaskGen.feature('fc')
-# @waflib.TaskGen.before('process_source')
-# def dynamic_post(self):
-#     if not getattr(self, 'dynamic_source', None):
-#         return
-#     self.source = to_list(self.source)
-#     self.source.extend(self.path.get_bld().ant_glob(self.dynamic_source))
-
-
-# from waflib import TaskGen
-# TaskGen.declare_chain(
-#         name         = 'patchy', 
-#         rule         = '${PATCHY} -- ${SRC[0]}} .go', 
-#         shell        = False,
-#         ext_in       = '.', 
-#         ext_out      = '.luac', 
-#         reentrant    = False, 
-#         install_path = '${LUADIR}', 
-# )
-
-
-
-
-
-# def patchy(task):
-#     name = str(task.inputs[0]).replace('.cra','')
-#     print ('Force a successful run of nypatchy on %s' % name)
-#     cmd = 'nypatchy - %s %s - - - - - - - - - :GO > patchy-%s.log|| true' % \
-#           (name,name, name)
-#     return task.exec_command(cmd)
+        lib = bld.env.LIB_GSL + bld.env.LIB_CERN + ['Isles'],
+        libpath = bld.env.LIBPATH_GSL + bld.env.LIBPATH_CERN + [isles_lib.abspath()],
+        linkflags = ['-std=c99'] + bld.env.LINKFLAGS_GSL + bld.env.LINKFLAGS_CERN,
+        use  = ['garfield','garfadd','garfint','nebemlib'])

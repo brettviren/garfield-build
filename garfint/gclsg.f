@@ -1,0 +1,5 @@
+CDECK  ID>, GCLSG.
+      SUBROUTINE GCLSG
+      CALL GUWK(1,0)
+      RETURN
+      END

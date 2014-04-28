@@ -1,0 +1,9 @@
+CDECK  ID>, GPREC.
+      SUBROUTINE GPREC(LI,IA,LR,RA,LS,LSTR,STR,MDL,IERR,LD,D)
+      implicit none
+      INTEGER LI,IA(LI),LR,LS,LSTR,MDL,IERR,LD
+      CHARACTER*(*) STR(LS),D(LD)
+      REAL RA(LR)
+      IERR=0
+      RETURN
+      END

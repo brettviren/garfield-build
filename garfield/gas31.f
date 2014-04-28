@@ -1,0 +1,676 @@
+CDECK  ID>, GAS31.
+      SUBROUTINE GAS31(Q,QIN,NIN,E,EIN,NAME,VIRIAL,EOBY
+     /,PEQEL,PEQIN,KEL,KIN,SCRPT)
+      IMPLICIT REAL*8 (A-H,O-Z)
+       DOUBLE PRECISION PIR2,ECHARG,EMASS,AMU,BOLTZ,BOLTZJ,
+     -      AWB,ALOSCH,ABZERO,ATMOS
+       PARAMETER(PIR2=8.79735534D-17)
+       PARAMETER(ECHARG=1.602176462D-19)
+       PARAMETER(EMASS=9.10938188D-31)
+       PARAMETER(AMU=1.66053873D-27)
+       PARAMETER(BOLTZ=8.617342D-5)
+       PARAMETER(BOLTZJ=1.3806503D-23)
+       PARAMETER(AWB=1.758820174D10)
+       PARAMETER(ALOSCH=2.6867775D19)
+       PARAMETER(ABZERO=273.15D0)
+       PARAMETER(ATMOS=760.0D0)
+       INTEGER NGAS,NSTEP,IDBG
+       DOUBLE PRECISION EFINAL,ESTEP,AKT,ARY,TEMPC,TORR
+       PARAMETER(ARY=13.60569172)
+       COMMON/INPT/NGAS,NSTEP,EFINAL,ESTEP,AKT,TEMPC,TORR,IDBG
+      DIMENSION PEQEL(6,2048),PEQIN(220,2048),KIN(220),KEL(6)
+      DIMENSION Q(6,2048),QIN(220,2048),E(6),EIN(220)
+      DIMENSION XEL(25),YEL(25),XVIBH(19),YVIBH(19),XION(47),YION(47),
+     /XATT(30),YATT(30),XEXC1(18),YEXC1(18)
+      DIMENSION ELEV(120),AKL(120),AJL(120),PJ(120)
+      CHARACTER*30 SCRPT(226)
+      CHARACTER*15 NAME
+C J VALUES OF FIRST 120 LEVELS
+      DATA AJL/0.0,1.0,1.0,2.0,2.0,2.0,3.0,3.0,3.0,3.0,
+     /4.0,4.0,4.0,4.0,4.0,5.0,5.0,5.0,5.0,5.0,
+     /5.0,6.0,6.0,6.0,6.0,6.0,6.0,6.0,7.0,7.0,
+     /7.0,7.0,7.0,7.0,7.0,7.0,8.0,8.0,8.0,8.0,
+     /8.0,8.0,8.0,8.0,8.0,9.0,9.0,9.0,9.0,9.0,
+     /9.0,9.0,9.0,9.0,9.0,10.,10.,10.,10.,10.,
+     /10.,10.,10.,10.,10.,10.,11.,11.,11.,11.,
+     /11.,11.,11.,11.,11.,11.,11.,11.,12.,12.,
+     /12.,12.,12.,12.,12.,12.,12.,12.,12.,12.,
+     /12.,13.,13.,13.,13.,13.,13.,13.,13.,13.,
+     /13.,13.,13.,13.,13.,14.,14.,14.,14.,14.,
+     /14.,14.,14.,14.,14.,14.,14.,14.,14.,14./
+C K VALUES OF FIRST 120 LEVELS
+      DATA AKL/0.0,0.0,1.0,0.0,1.0,2.0,0.0,1.0,2.0,3.0,
+     /0.0,1.0,2.0,3.0,4.0,0.0,1.0,2.0,3.0,4.0,
+     /5.0,0.0,1.0,2.0,3.0,4.0,5.0,6.0,0.0,1.0,
+     /2.0,3.0,4.0,5.0,6.0,7.0,0.0,1.0,2.0,3.0,
+     /4.0,5.0,6.0,7.0,8.0,0.0,1.0,2.0,3.0,4.0,
+     /5.0,6.0,7.0,8.0,9.0,0.0,1.0,2.0,3.0,4.0,
+     /5.0,6.0,7.0,8.0,9.0,10.,0.0,1.0,2.0,3.0,
+     /4.0,5.0,6.0,7.0,8.0,9.0,10.,11.,0.0,1.0,
+     /2.0,3.0,4.0,5.0,6.0,7.0,8.0,9.0,10.,11.,
+     /12.,0.0,1.0,2.0,3.0,4.0,5.0,6.0,7.0,8.0,
+     /9.0,10.,11.,12.,13.,0.0,1.0,2.0,3.0,4.0,
+     /5.0,6.0,7.0,8.0,9.0,10.,11.,12.,13.,14./
+C (ELASTIC + ROTATIONAL)  MOMENTUM TRANSFER
+      DATA XEL/.0001,.001,0.01,0.03,0.10,0.40,1.00,1.50,2.00,2.75,
+     /3.50,5.00,7.50,10.0,12.0,15.0,20.0,30.0,60.0,100.,
+     /200.0,500.0,1000.0,10000.,100000./
+      DATA YEL/156000.,15600.,1560.,520.,125.,19.5,5.20,3.25,3.00,2.80,
+     /3.20,4.50,6.00,7.00,7.00,6.80,6.50,5.50,2.90,1.55,
+     /0.70,0.15,.075,.007,.0007/
+C RESONACE SHAPE FUNCTION FOR VIBRATIONS
+      DATA XVIBH/0.00,2.00,3.00,4.00,5.00,6.00,7.00,7.30,7.60,8.00,
+     /9.00,10.0,12.0,15.0,20.0,100.,1000.,10000.,100000./
+      DATA YVIBH/0.00,0.00,0.01,0.06,0.16,0.39,0.59,0.60,0.59,0.42,
+     /0.31,0.16,0.06,0.01,.005,.001,.0001,.00001,.000001/
+C IONISATION
+      DATA XION/10.16,11.6,12.5,14.0,16.0,18.0,20.0,25.0,30.0,35.0,
+     /40.0,45.0,50.0,55.0,60.0,65.0,70.0,80.0,90.0,100.,
+     /120.,140.,160.,180.,200.,240.,280.,320.,360.,400.,
+     /440.,500.,550.,600.,650.,700.,750.,800.,900.,1000.,
+     /2000.,4000.,6000.,10000.,20000.,40000.,100000./
+      DATA YION/0.00,.067,0.16,0.29,0.46,0.63,0.80,1.25,1.65,2.02,
+     /2.38,2.62,2.78,2.87,2.94,2.99,3.02,3.05,3.04,3.01,
+     /2.91,2.80,2.70,2.60,2.50,2.30,2.13,1.98,1.85,1.74,
+     /1.64,1.50,1.42,1.34,1.27,1.21,1.16,1.12,1.05,0.99,
+     /0.53,0.30,0.21,0.14,.074,.040,.017/
+C ATTACHMENT
+      DATA XATT/4.60,4.75,5.00,5.25,5.50,5.65,5.75,6.00,6.25,6.50,
+     /6.75,7.00,7.50,8.00,8.50,9.00,9.50,10.0,10.5,11.0,
+     /11.5,12.0,12.5,13.0,14.0,16.0,100.,1000.,10000.,100000./
+      DATA YATT/0.00,0.15,0.63,2.04,3.33,3.66,3.60,2.82,1.65,0.84,
+     /0.36,0.12,.048,.048,.048,.081,.276,0.48,0.54,0.48,
+     /0.36,.213,.114,0.06,0.03,.003,.0003,.00003,.000003,.0000003/
+C USED SINGLE LUMPED EXCITATION LEVEL AT 7 EV
+      DATA XEXC1/7.00,7.50,8.00,9.00,10.0,12.0,15.0,20.0,30.0,40.0,
+     /50.0,80.0,100.0,200.,500.0,1000.,10000.,100000./
+      DATA YEXC1/0.00,0.24,0.48,0.96,1.32,1.80,2.28,2.85,3.10,3.25,
+     /3.35,3.20,3.00,2.40,1.35,0.72,.072,.0072/
+C
+      NAME='NH3 (2004)'
+C --------------------------------------------------------------------
+C  EXPERIMENTAL DATA NOT ACCURATE IN AMMONIA GAS. LACK OF GOOD QUALITY
+C  TRANSVERSE DIFFUSION MEASUREMENTS.   ELECTRON SCATTERING DATA IS
+C  USED IN THE ANALYSIS AND REPRODUCES DRIFT VELOCITY AND DIFFUSION
+C  COEFFICIENTS TO AN  ACCURACY OF  3%.
+C  ATTACHMENT X-SEC FROM SHARP ET AL.
+C  USED SYMMETRIC TOP ROTATOR MODEL FOR ROTATIONAL EXCITATIONS
+C  THE FIRST 120 ROTATIONAL STATES ARE USED IN THE ANALYSIS THEN GROUPED
+C  INTO TRANSITIONS OF EQUAL ENERGY GIVING A TOTAL OF 28 ROTATIONAL
+C  TRANSITIONS.
+C  DIPOLE ANGULAR DISTRIBUTION USED FOR ROTATIONAL EXCITATIONS.
+C ---------------------------------------------------------------------
+      NIN=34
+      DO 1 J=1,6
+    1 KEL(J)=0
+C SET ANGULAR DISTRIBUTION FLAG FOR ROTATIONAL LEVELS
+      DO 2 J=1,NIN
+      KIN(J)=0
+    2 IF(J.LE.28) KIN(J)=1
+      NDATA=25
+      NVIBH=19
+      NION=47
+      NATT=30
+      NEXC1=18
+      E(1)=0.0
+      E(2)=2.0*EMASS/(17.03056*AMU)
+      E(3)=10.16
+      E(4)=0.0
+      E(5)=0.0
+      E(6)=0.0
+      EOBY=10.8
+C----------------------------------------------------------------------
+C AR AND BR ARE ROTATIONAL CONSTANTS FOR SYMMETRIC TOP ROTOR
+C ENERGY OF LEVEL (JK) = BR*J*(J+1) + (AR-BR)*K*K
+C DBA IS DIPOLE MOMENT
+C DRAT IS MOMENTUM TRANSFER TO TOTAL X-SECTION RATIO FOR DIPOLE ROTOR
+C
+      AR=0.0000287
+      BR=0.0000453
+      RY=13.60569172
+      A0=0.5291772083D-8
+C   CONVERT TO EV
+      AR=AR*2.0*RY
+      BR=BR*2.0*RY
+      DBA=0.5787
+      DRAT=0.08
+      DBK=8.37758*RY*(DBA*A0)**2
+C ---------------------------------------------------------------------
+C CALCULATE ROTATIONAL STATE POPULATION PJ(LEVEL) AT TEMPERATURE AKT
+      L=1
+      ELEV(1)=0.0
+      DO 6 J=1,14
+      DO 6 K=1,(J+1)
+      L=L+1
+      AJ=DBLE(J)
+      AK=DBLE(K)
+      AK=AK-1.0
+   6  ELEV(L)=BR*AJ*(AJ+1.0)+(AR-BR)*AK*AK
+      PJ(1)=2.0
+      DO 7 L=2,120
+      DEG=2.0
+      IF(AKL(L).EQ.1..OR.AKL(L).EQ.2..OR.AKL(L).EQ.4..OR.AKL(L).EQ.5..OR
+     /.AKL(L).EQ.7..OR.AKL(L).EQ.8..OR.AKL(L).EQ.10..OR.AKL(L).EQ.11..OR
+     /.AKL(L).EQ.13..OR.AKL(L).EQ.14.) DEG=1.0
+    7 PJ(L)=DEG*(2.0*AJL(L)+1.0)*EXP(-ELEV(L)/AKT)
+      SUM=0.0
+      DO 8 L=1,120
+    8 SUM=SUM+PJ(L)
+      DO 9 L=1,120
+    9 PJ(L)=PJ(L)/SUM
+C ----------------------------------------------------------------------
+      EIN(1)=ELEV(1)-ELEV(2)
+      EIN(2)=-EIN(1)
+      EIN(3)=ELEV(2)-ELEV(4)	
+      EIN(4)=-EIN(3)
+      EIN(5)=ELEV(4)-ELEV(7)
+      EIN(6)=-EIN(5)
+      EIN(7)=ELEV(7)-ELEV(11)
+      EIN(8)=-EIN(7)
+      EIN(9)=ELEV(11)-ELEV(16)
+      EIN(10)=-EIN(9)
+      EIN(11)=ELEV(16)-ELEV(22)
+      EIN(12)=-EIN(11)
+      EIN(13)=ELEV(22)-ELEV(29)
+      EIN(14)=-EIN(13)
+      EIN(15)=ELEV(29)-ELEV(37)
+      EIN(16)=-EIN(15)
+      EIN(17)=ELEV(37)-ELEV(46)
+      EIN(18)=-EIN(17)
+      EIN(19)=ELEV(46)-ELEV(56)
+      EIN(20)=-EIN(19)
+      EIN(21)=ELEV(56)-ELEV(67)
+      EIN(22)=-EIN(21)
+      EIN(23)=ELEV(67)-ELEV(79)
+      EIN(24)=-EIN(23)
+      EIN(25)=ELEV(79)-ELEV(92)
+      EIN(26)=-EIN(25)
+      EIN(27)=ELEV(92)-ELEV(106)
+      EIN(28)=-EIN(27)
+      EIN(29)=-0.1178
+      EIN(30)=0.1178
+      EIN(31)=0.2013
+      EIN(32)=0.4137
+      EIN(33)=0.8274
+      EIN(34)=7.00
+      SCRPT(1)='                              '
+      SCRPT(2)=' ELASTIC       NH3            '
+      SCRPT(3)=' IONISATION    ELOSS= 10.16   '
+      SCRPT(4)=' ATTACHMENT                   '
+      SCRPT(5)='                              '
+      SCRPT(6)='                              '
+      SCRPT(7)=' ROT  1K-- 0K  ELOSS= -0.00247'
+      SCRPT(8)=' ROT  0K-- 1K  ELOSS=  0.00247'
+      SCRPT(9)=' ROT  2K-- 1K  ELOSS= -0.00493'
+      SCRPT(10)=' ROT  1K-- 2K  ELOSS=  0.00493'
+      SCRPT(11)=' ROT  3K-- 2K  ELOSS= -0.00740'
+      SCRPT(12)=' ROT  2K-- 3K  ELOSS=  0.00740'
+      SCRPT(13)=' ROT  4K-- 3K  ELOSS= -0.00986'
+      SCRPT(14)=' ROT  3K-- 4K  ELOSS=  0.00986'
+      SCRPT(15)=' ROT  5K-- 4K  ELOSS= -0.0123 '
+      SCRPT(16)=' ROT  4K-- 5K  ELOSS=  0.0123 '
+      SCRPT(17)=' ROT  6K-- 5K  ELOSS= -0.0148 '
+      SCRPT(18)=' ROT  5K-- 6K  ELOSS=  0.0148 '
+      SCRPT(19)=' ROT  7K-- 6K  ELOSS= -0.0173 '
+      SCRPT(20)=' ROT  6K-- 7K  ELOSS=  0.0173 '
+      SCRPT(21)=' ROT  8K-- 7K  ELOSS= -0.0197 '
+      SCRPT(22)=' ROT  7K-- 8K  ELOSS=  0.0197 '
+      SCRPT(23)=' ROT  9K-- 8K  ELOSS= -0.0222 '
+      SCRPT(24)=' ROT  8K-- 9K  ELOSS=  0.0222 '
+      SCRPT(25)=' ROT 10K-- 9K  ELOSS= -0.0247 '
+      SCRPT(26)=' ROT  9K--10K  ELOSS=  0.0247 '
+      SCRPT(27)=' ROT 11K--10K  ELOSS= -0.0271 '
+      SCRPT(28)=' ROT 10K--11K  ELOSS=  0.0271 '
+      SCRPT(29)=' ROT 12K--11K  ELOSS= -0.0296 '
+      SCRPT(30)=' ROT 11K--12K  ELOSS=  0.0296 '
+      SCRPT(31)=' ROT 13K--12K  ELOSS= -0.0320 '
+      SCRPT(32)=' ROT 12K--13K  ELOSS=  0.0320 '
+      SCRPT(33)=' ROT 14K--13K  ELOSS= -0.0345 '
+      SCRPT(34)=' ROT 13K--14K  ELOSS=  0.0345 '
+      SCRPT(35)=' VIB V2        ELOSS= -0.1178 '
+      SCRPT(36)=' VIB V2        ELOSS=  0.1178 '
+      SCRPT(37)=' VIB V4        ELOSS=  0.2013 '
+      SCRPT(38)=' VIB V1 + V3   ELOSS=  0.4137 '
+      SCRPT(39)=' VIB  HAR      ELOSS=  0.8274 '
+      SCRPT(40)=' EXC           ELOSS=  7.00   '
+      EN=-ESTEP/2.0D0
+      APOPV2=EXP(EIN(29)/AKT)
+      DO 900 I=1,NSTEP
+      EN=EN+ESTEP
+      Q(2,I)=0.0D0
+      IF(EN.LE.XEL(1)) THEN
+       Q(2,I)=YEL(1)*1.D-16
+       GO TO 30
+      ENDIF
+      DO 10 J=2,NDATA
+      IF(EN.LE.XEL(J)) GO TO 20
+   10 CONTINUE
+      J=NDATA
+C USE LOG INTERPOLATION BECAUSE OF RAPID CHANGE IN X-SEC
+   20 YXJ=LOG(YEL(J))
+      YXJ1=LOG(YEL(J-1))
+      XNJ=LOG(XEL(J))
+      XNJ1=LOG(XEL(J-1))
+      A=(YXJ-YXJ1)/(XNJ-XNJ1)
+      B=(XNJ1*YXJ-XNJ*YXJ1)/(XNJ1-XNJ)
+      Q(2,I)=EXP(A*LOG(EN)+B)*1.D-16
+C
+   30 Q(3,I)=0.0D0
+      IF(EN.LT.E(3)) GO TO 40
+      DO 31 J=2,NION
+      IF(EN.LE.XION(J)) GO TO 32
+   31 CONTINUE
+      J=NION
+   32 A=(YION(J)-YION(J-1))/(XION(J)-XION(J-1))
+      B=(XION(J-1)*YION(J)-XION(J)*YION(J-1))/(XION(J-1)-XION(J))
+      Q(3,I)=(A*EN+B)*1.D-16
+   40 CONTINUE
+C
+      Q(4,I)=0.0D0
+      IF(EN.LT.XATT(1)) GO TO 50
+      DO 41 J=2,NATT
+      IF(EN.LE.XATT(J)) GO TO 42
+   41 CONTINUE
+      J=NATT
+   42 A=(YATT(J)-YATT(J-1))/(XATT(J)-XATT(J-1))
+      B=(XATT(J-1)*YATT(J)-XATT(J)*YATT(J-1))/(XATT(J-1)-XATT(J))
+      Q(4,I)=(A*EN+B)*1.D-18
+   50 CONTINUE
+      Q(5,I)=0.0D0
+      Q(6,I)=0.0D0
+C----------------------------------------------------------------------
+C DIPOLE BORN ROTATIONAL TRANSITIONS
+C SUMMED TRANSITIONS OF EQUAL ENERGY
+C----------------------------------------------------------------------
+      ENRT=SQRT(EN)
+C  ROTATIONAL COLLISIONS (JK)
+C 10-->00
+      AJ=1.0
+      AJG=1.0
+      AJG2=AJG*AJG
+      QIN(1,I)=DBK*LOG((ENRT+SQRT(EN-EIN(1)))/(SQRT(EN-EIN(1))-ENRT))
+     /*PJ(2)*AJG2/(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(1,I)=0.5+(QIN(1,I)-DRAT*QIN(1,I))/QIN(1,I)
+C 00-->10
+      AJ=0.0
+      AJG=1.0
+      AJG2=AJG*AJG
+      QIN(2,I)=0.0D0
+      IF(EN.LE.EIN(2)) GO TO 60
+      QIN(2,I)=DBK*LOG((ENRT+SQRT(EN-EIN(2)))/(ENRT-SQRT(EN-EIN(2))))
+     /*PJ(1)*AJG2/(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(2,I)=0.5+(QIN(2,I)-DRAT*QIN(2,I))/QIN(2,I)
+C 20-->10  + 21-->11
+   60 AJ=2.0
+      AJG=2.0
+      AJG2=AJG*AJG
+      QIN(3,I)=DBK*LOG((ENRT+SQRT(EN-EIN(3)))/(SQRT(EN-EIN(3))-ENRT))
+     /*(PJ(4)*AJG2+PJ(5)*(AJG2-1.0))/(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(3,I)=0.5+(QIN(3,I)-DRAT*QIN(3,I))/QIN(3,I)
+C 10-->20 + 11-->21
+      AJ=1.0
+      AJG=2.0
+      AJG2=AJG*AJG
+      QIN(4,I)=0.0D0
+      IF(EN.LE.EIN(4)) GO TO 61
+      QIN(4,I)=DBK*LOG((ENRT+SQRT(EN-EIN(4)))/(ENRT-SQRT(EN-EIN(4))))
+     /*(PJ(2)*AJG2+PJ(3)*(AJG2-1.0))/(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(4,I)=0.5+(QIN(4,I)-DRAT*QIN(4,I))/QIN(4,I)
+C 30-->20 + 31-->21 + 32-->22
+   61 AJ=3.0
+      AJG=3.0
+      AJG2=AJG*AJG
+      QIN(5,I)=DBK*LOG((ENRT+SQRT(EN-EIN(5)))/(SQRT(EN-EIN(5))-ENRT))
+     /*(PJ(7)*AJG2+PJ(8)*(AJG2-1.0)+PJ(9)*(AJG2-4.0))/(AJG*(2.0*AJ+1.0)*
+     /EN)
+      PEQIN(5,I)=0.5+(QIN(5,I)-DRAT*QIN(5,I))/QIN(5,I)
+C 20-->30 + 21-->31 + 22-->32
+      AJ=2.0
+      AJG=3.0
+      AJG2=AJG*AJG
+      QIN(6,I)=0.0D0
+      IF(EN.LE.EIN(6)) GO TO 62
+      QIN(6,I)=DBK*LOG((ENRT+SQRT(EN-EIN(6)))/(ENRT-SQRT(EN-EIN(6))))
+     /*(PJ(4)*AJG2+PJ(5)*(AJG2-1.0)+PJ(6)*(AJG2-4.0))/(AJG*(2.0*AJ+1.0)*
+     /EN)
+      PEQIN(6,I)=0.5+(QIN(6,I)-DRAT*QIN(6,I))/QIN(6,I)
+C 40-->30 + 41-->31 + 42-->32 + 43-->33
+   62 AJ=4.0
+      AJG=4.0
+      AJG2=AJG*AJG
+      QIN(7,I)=DBK*LOG((ENRT+SQRT(EN-EIN(7)))/(SQRT(EN-EIN(7))-ENRT))
+     /*(PJ(11)*AJG2+PJ(12)*(AJG2-1.0)+PJ(13)*(AJG2-4.0)+PJ(14)*(AJG2-9.0
+     /))/(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(7,I)=0.5+(QIN(7,I)-DRAT*QIN(7,I))/QIN(7,I)
+C 30-->40 + 31-->41 + 32-->42 + 33-->43
+      AJ=3.0
+      AJG=4.0
+      AJG2=AJG*AJG
+      QIN(8,I)=0.0D0
+      IF(EN.LE.EIN(8)) GO TO 63
+      QIN(8,I)=DBK*LOG((ENRT+SQRT(EN-EIN(8)))/(ENRT-SQRT(EN-EIN(8))))
+     /*(PJ(7)*AJG2+PJ(8)*(AJG2-1.0)+PJ(9)*(AJG2-4.0)+PJ(10)*(AJG2-9.0))/
+     /(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(8,I)=0.5+(QIN(8,I)-DRAT*QIN(8,I))/QIN(8,I)
+C 50-->40 + 51-->41 + 52-->42 + 53-->43 + 54-->44
+   63 AJ=5.0
+      AJG=5.0
+      AJG2=AJG*AJG
+      QIN(9,I)=DBK*LOG((ENRT+SQRT(EN-EIN(9)))/(SQRT(EN-EIN(9))-ENRT))
+     /*(PJ(16)*AJG2+PJ(17)*(AJG2-1.0)+PJ(18)*(AJG2-4.0)+PJ(19)*(AJG2-9.0
+     /)+PJ(20)*(AJG2-16.0))/(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(9,I)=0.5+(QIN(9,I)-DRAT*QIN(9,I))/QIN(9,I)
+C 40-->50 + 41-->51 + 42-->52 + 43-->53 + 44-->54
+      AJ=4.0
+      AJG=5.0
+      AJG2=AJG*AJG
+      QIN(10,I)=0.0D0
+      IF(EN.LE.EIN(10)) GO TO 64
+      QIN(10,I)=DBK*LOG((ENRT+SQRT(EN-EIN(10)))/(ENRT-SQRT(EN-EIN(10)
+     /)))*(PJ(11)*AJG2+PJ(12)*(AJG2-1.0)+PJ(13)*(AJG2-4.0)+PJ(14)*(AJG2-
+     /9.0)+PJ(15)*(AJG2-16.0))/(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(10,I)=0.5+(QIN(10,I)-DRAT*QIN(10,I))/QIN(10,I)
+C 60-->50 + 61-->51 + 62-->52 + 63-->53 + 64-->54 + 65-->55
+   64 AJ=6.0
+      AJG=6.0
+      AJG2=AJG*AJG
+      QIN(11,I)=DBK*LOG((ENRT+SQRT(EN-EIN(11)))/(SQRT(EN-EIN(11))-
+     /ENRT))*(PJ(22)*AJG2+PJ(23)*(AJG2-1.0)+PJ(24)*(AJG2-4.0)+PJ(25)*
+     /(AJG2-9.0)+PJ(26)*(AJG2-16.0)+PJ(27)*(AJG2-25.0))/(AJG*(2.0*AJ+
+     /1.0)*EN)
+      PEQIN(11,I)=0.5+(QIN(11,I)-DRAT*QIN(11,I))/QIN(11,I)
+C 50-->60 + 51-->61 + 52-->62 + 53-->63 + 54-->64 + 55-->65
+      AJ=5.0
+      AJG=6.0
+      AJG2=AJG*AJG
+      QIN(12,I)=0.0D0
+      IF(EN.LE.EIN(12)) GO TO 65
+      QIN(12,I)=DBK*LOG((ENRT+SQRT(EN-EIN(12)))/(ENRT-SQRT(EN-EIN(12)
+     /)))*(PJ(16)*AJG2+PJ(17)*(AJG2-1.0)+PJ(18)*(AJG2-4.0)+PJ(19)*(AJG2-
+     /9.0)+PJ(20)*(AJG2-16.0)+PJ(21)*(AJG2-25.0))/(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(12,I)=0.5+(QIN(12,I)-DRAT*QIN(12,I))/QIN(12,I)
+C 70-->60 + 71-->61 + 72-->62 + 73-->63 + 74-->64 + 75-->65 + 76-->66
+   65 AJ=7.0
+      AJG=7.0
+      AJG2=AJG*AJG
+      QIN(13,I)=DBK*LOG((ENRT+SQRT(EN-EIN(13)))/(SQRT(EN-EIN(13))-
+     /ENRT))*(PJ(29)*AJG2+PJ(30)*(AJG2-1.0)+PJ(31)*(AJG2-4.0)+PJ(32)*
+     /(AJG2-9.0)+PJ(33)*(AJG2-16.)+PJ(34)*(AJG2-25.)+PJ(35)*(AJG2-36.))/
+     /(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(13,I)=0.5+(QIN(13,I)-DRAT*QIN(13,I))/QIN(13,I)
+C 60-->70 + 61-->71 + 62-->72 + 63-->73 + 64-->74 + 65-->75 + 66-->76
+      AJ=6.0
+      AJG=7.0
+      AJG2=AJG*AJG
+      QIN(14,I)=0.0D0
+      IF(EN.LE.EIN(14)) GO TO 66
+      QIN(14,I)=DBK*LOG((ENRT+SQRT(EN-EIN(14)))/(ENRT-SQRT(EN-EIN(14)
+     /)))*(PJ(22)*AJG2+PJ(23)*(AJG2-1.0)+PJ(24)*(AJG2-4.0)+PJ(25)*(AJG2-
+     /9.0)+PJ(26)*(AJG2-16.0)+PJ(27)*(AJG2-25.0)+PJ(28)*(AJG2-36.))/
+     /(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(14,I)=0.5+(QIN(14,I)-DRAT*QIN(14,I))/QIN(14,I)
+C 80-->70 +81-->71 +82-->72 +87-->73 +84-->74 +85-->75 +86-->76 +87-->77
+   66 AJ=8.0
+      AJG=8.0
+      AJG2=AJG*AJG
+      QIN(15,I)=DBK*LOG((ENRT+SQRT(EN-EIN(15)))/(SQRT(EN-EIN(15))-
+     /ENRT))*(PJ(37)*AJG2+PJ(38)*(AJG2-1.0)+PJ(39)*(AJG2-4.0)+PJ(40)*
+     /(AJG2-9.0)+PJ(41)*(AJG2-16.)+PJ(42)*(AJG2-25.)+PJ(43)*(AJG2-36.)+
+     /PJ(44)*(AJG2-49.))/(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(15,I)=0.5+(QIN(15,I)-DRAT*QIN(15,I))/QIN(15,I)
+C 70-->80 +71-->81 +72-->82 +73-->83 +74-->84 +75-->85 +76-->86 +77-->87
+      AJ=7.0
+      AJG=8.0
+      AJG2=AJG*AJG
+      QIN(16,I)=0.0D0
+      IF(EN.LE.EIN(16)) GO TO 67
+      QIN(16,I)=DBK*LOG((ENRT+SQRT(EN-EIN(16)))/(ENRT-SQRT(EN-EIN(16)
+     /)))*(PJ(29)*AJG2+PJ(30)*(AJG2-1.0)+PJ(31)*(AJG2-4.0)+PJ(32)*(AJG2-
+     /9.0)+PJ(33)*(AJG2-16.0)+PJ(34)*(AJG2-25.0)+PJ(35)*(AJG2-36.)+
+     /PJ(36)*(AJG2-49.))/(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(16,I)=0.5+(QIN(16,I)-DRAT*QIN(16,I))/QIN(16,I)
+C 90-->80 +91-->81 +92-->82 +97-->83 +94-->84 +95-->85 +96-->86 +97-->87
+C +98-->88
+   67 AJ=9.0
+      AJG=9.0
+      AJG2=AJG*AJG
+      QIN(17,I)=DBK*LOG((ENRT+SQRT(EN-EIN(17)))/(SQRT(EN-EIN(17))-
+     /ENRT))*(PJ(46)*AJG2+PJ(47)*(AJG2-1.0)+PJ(48)*(AJG2-4.0)+PJ(49)*
+     /(AJG2-9.0)+PJ(50)*(AJG2-16.)+PJ(51)*(AJG2-25.)+PJ(52)*(AJG2-36.)+
+     /PJ(53)*(AJG2-49.)+PJ(54)*(AJG2-64.))/(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(17,I)=0.5+(QIN(17,I)-DRAT*QIN(17,I))/QIN(17,I)
+C 80-->90 +81-->91 +82-->92 +83-->93 +84-->94 +85-->95 +86-->96 +87-->97
+C +88-->98
+      AJ=8.0
+      AJG=9.0
+      AJG2=AJG*AJG
+      QIN(18,I)=0.0D0
+      IF(EN.LE.EIN(18)) GO TO 68
+      QIN(18,I)=DBK*LOG((ENRT+SQRT(EN-EIN(18)))/(ENRT-SQRT(EN-EIN(18)
+     /)))*(PJ(37)*AJG2+PJ(38)*(AJG2-1.0)+PJ(39)*(AJG2-4.0)+PJ(40)*(AJG2-
+     /9.0)+PJ(41)*(AJG2-16.0)+PJ(42)*(AJG2-25.0)+PJ(43)*(AJG2-36.)+
+     /PJ(44)*(AJG2-49.)+PJ(45)*(AJG2-64.))/(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(18,I)=0.5+(QIN(18,I)-DRAT*QIN(18,I))/QIN(18,I)
+C 10 0-->90 + 10 1-->91 +10 2-->92 + 10 3 -->93 + 10 4-->94 + 10 5-->95
+C + 10 6-->96 + 10 7-->97 + 10 8 -->98 + 10 9-->99
+   68 AJ=10.0
+      AJG=10.0
+      AJG2=AJG*AJG
+      QIN(19,I)=DBK*LOG((ENRT+SQRT(EN-EIN(19)))/(SQRT(EN-EIN(19))-
+     /ENRT))*(PJ(56)*AJG2+PJ(57)*(AJG2-1.0)+PJ(58)*(AJG2-4.0)+PJ(59)*
+     /(AJG2-9.0)+PJ(60)*(AJG2-16.)+PJ(61)*(AJG2-25.)+PJ(62)*(AJG2-36.)+
+     /PJ(63)*(AJG2-49.)+PJ(64)*(AJG2-64.)+PJ(65)*(AJG2-81.))/(AJG*(2.0*
+     /AJ+1.0)*EN)
+      PEQIN(19,I)=0.5+(QIN(19,I)-DRAT*QIN(19,I))/QIN(19,I)
+C 90-->10 0 + 91-->10 1 + 92-->10 2 + 93-->10 3 + 94-->10 4 + 95-->10 5
+C + 96-->10 6 + 97-->10 7 + 98-->10 8 + 99-->10 9
+      AJ=9.0
+      AJG=10.0
+      AJG2=AJG*AJG
+      QIN(20,I)=0.0D0
+      IF(EN.LE.EIN(20)) GO TO 69
+      QIN(20,I)=DBK*LOG((ENRT+SQRT(EN-EIN(20)))/(ENRT-SQRT(EN-EIN(20)
+     /)))*(PJ(46)*AJG2+PJ(47)*(AJG2-1.0)+PJ(48)*(AJG2-4.0)+PJ(49)*(AJG2-
+     /9.0)+PJ(50)*(AJG2-16.0)+PJ(51)*(AJG2-25.0)+PJ(52)*(AJG2-36.)+
+     /PJ(53)*(AJG2-49.)+PJ(54)*(AJG2-64.)+PJ(55)*(AJG2-81.))/(AJG*(2.0*
+     /AJ+1.0)*EN)
+      PEQIN(20,I)=0.5+(QIN(20,I)-DRAT*QIN(20,I))/QIN(20,I)
+C 110-->100 +111-->101 +112-->102 +113-->103 +114-->104 +115-->105
+C +116-->106 +117-->107 +118-->108 +119-->109 +1110-->1010
+   69 AJ=11.0
+      AJG=11.0
+      AJG2=AJG*AJG
+      QIN(21,I)=DBK*LOG((ENRT+SQRT(EN-EIN(21)))/(SQRT(EN-EIN(21))-
+     /ENRT))*(PJ(67)*AJG2+PJ(68)*(AJG2-1.0)+PJ(69)*(AJG2-4.0)+PJ(70)*
+     /(AJG2-9.0)+PJ(71)*(AJG2-16.)+PJ(72)*(AJG2-25.)+PJ(73)*(AJG2-36.)+
+     /PJ(74)*(AJG2-49.)+PJ(75)*(AJG2-64.)+PJ(76)*(AJG2-81.)+PJ(77)*(AJG2
+     /-100.))/(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(21,I)=0.5+(QIN(21,I)-DRAT*QIN(21,I))/QIN(21,I)
+C 100-->110 +101-->111 +102-->112 +103-->113 +104-->114 +105-->115
+C +106-->116 +107-->117 +108-->118 +109-->119 +1010-->1110
+      AJ=10.0
+      AJG=11.0
+      AJG2=AJG*AJG
+      QIN(22,I)=0.0D0
+      IF(EN.LE.EIN(22)) GO TO 70
+      QIN(22,I)=DBK*LOG((ENRT+SQRT(EN-EIN(22)))/(ENRT-SQRT(EN-EIN(22)
+     /)))*(PJ(56)*AJG2+PJ(57)*(AJG2-1.0)+PJ(58)*(AJG2-4.0)+PJ(59)*(AJG2-
+     /9.0)+PJ(60)*(AJG2-16.0)+PJ(61)*(AJG2-25.0)+PJ(62)*(AJG2-36.)+
+     /PJ(63)*(AJG2-49.)+PJ(64)*(AJG2-64.)+PJ(65)*(AJG2-81.)+PJ(66)*(AJG2
+     /-100.))/(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(22,I)=0.5+(QIN(22,I)-DRAT*QIN(22,I))/QIN(22,I)
+C 120-->110 +121-->111 +122-->112 +123-->113 +124-->114 +125-->115
+C +126-->116 +127-->117 +128-->118 +129-->119 +1210-->1110 +1211-->1111
+   70 AJ=12.0
+      AJG=12.0
+      AJG2=AJG*AJG
+      QIN(23,I)=DBK*LOG((ENRT+SQRT(EN-EIN(23)))/(SQRT(EN-EIN(23))-
+     /ENRT))*(PJ(79)*AJG2+PJ(80)*(AJG2-1.0)+PJ(81)*(AJG2-4.0)+PJ(82)*
+     /(AJG2-9.0)+PJ(83)*(AJG2-16.)+PJ(84)*(AJG2-25.)+PJ(85)*(AJG2-36.)+
+     /PJ(86)*(AJG2-49.)+PJ(87)*(AJG2-64.)+PJ(88)*(AJG2-81.)+PJ(89)*(AJG2
+     /-100.)+PJ(90)*(AJG2-121.))/(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(23,I)=0.5+(QIN(23,I)-DRAT*QIN(23,I))/QIN(23,I)
+C 110-->120 +111-->121 +112-->122 +113-->123 +114-->124 +115-->125
+C +116-->126 +117-->127 +118-->128 +119-->129 +1110-->1210 +1111-->1211
+      AJ=11.0
+      AJG=12.0
+      AJG2=AJG*AJG
+      QIN(24,I)=0.0D0
+      IF(EN.LE.EIN(24)) GO TO 71
+      QIN(24,I)=DBK*LOG((ENRT+SQRT(EN-EIN(24)))/(ENRT-SQRT(EN-EIN(24)
+     /)))*(PJ(67)*AJG2+PJ(68)*(AJG2-1.0)+PJ(69)*(AJG2-4.0)+PJ(70)*(AJG2-
+     /9.0)+PJ(71)*(AJG2-16.0)+PJ(72)*(AJG2-25.0)+PJ(73)*(AJG2-36.)+
+     /PJ(74)*(AJG2-49.)+PJ(75)*(AJG2-64.)+PJ(76)*(AJG2-81.)+PJ(77)*(AJG2
+     /-100.)+PJ(78)*(AJG2-121.))/(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(24,I)=0.5+(QIN(24,I)-DRAT*QIN(24,I))/QIN(24,I)
+C 130-->120 +131-->121 +132-->122 +133-->123 +134-->124 +135-->125
+C +136-->126 +137-->127 +138-->128 +139-->129 +1310-->1210 +1311-->1211
+C +1312-->1212
+   71 AJ=13.0
+      AJG=13.0
+      AJG2=AJG*AJG
+      QIN(25,I)=DBK*LOG((ENRT+SQRT(EN-EIN(25)))/(SQRT(EN-EIN(25))-
+     /ENRT))*(PJ(92)*AJG2+PJ(93)*(AJG2-1.0)+PJ(94)*(AJG2-4.0)+PJ(95)*
+     /(AJG2-9.0)+PJ(96)*(AJG2-16.)+PJ(97)*(AJG2-25.)+PJ(98)*(AJG2-36.)+
+     /PJ(99)*(AJG2-49.)+PJ(100)*(AJG2-64.)+PJ(101)*(AJG2-81.)+PJ(102)*
+     /(AJG2-100.)+PJ(103)*(AJG2-121.)+PJ(104)*(AJG2-144.))/(AJG*
+     /(2.0*AJ+1.0)*EN)
+      PEQIN(25,I)=0.5+(QIN(25,I)-DRAT*QIN(25,I))/QIN(25,I)
+C 120-->130 +121-->131 +122-->132 +123-->133 +124-->134 +125-->135
+C +126-->136 +127-->137 +128-->138 +129-->139 +1210-->1310 +1211-->1311
+C +1212-->1312
+      AJ=12.0
+      AJG=13.0
+      AJG2=AJG*AJG
+      QIN(26,I)=0.0D0
+      IF(EN.LE.EIN(26)) GO TO 72
+      QIN(26,I)=DBK*LOG((ENRT+SQRT(EN-EIN(26)))/(ENRT-SQRT(EN-EIN(26)
+     /)))*(PJ(79)*AJG2+PJ(80)*(AJG2-1.0)+PJ(81)*(AJG2-4.0)+PJ(82)*(AJG2-
+     /9.0)+PJ(83)*(AJG2-16.0)+PJ(84)*(AJG2-25.0)+PJ(85)*(AJG2-36.)+
+     /PJ(86)*(AJG2-49.)+PJ(87)*(AJG2-64.)+PJ(88)*(AJG2-81.)+PJ(89)*(AJG2
+     /-100.)+PJ(90)*(AJG2-121.)+PJ(91)*(AJG2-144.))/
+     /(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(26,I)=0.5+(QIN(26,I)-DRAT*QIN(26,I))/QIN(26,I)
+C 140-->130 +141-->131 +142-->132 +143-->133 +144-->134 +145-->135
+C +146-->136 +147-->137 +148-->138 +149-->139 +1410-->1310 +1411-->1311
+C +1412-->1312 +1413-->1313
+   72 AJ=14.0
+      AJG=14.0
+      AJG2=AJG*AJG
+      QIN(27,I)=DBK*LOG((ENRT+SQRT(EN-EIN(27)))/(SQRT(EN-EIN(27))-
+     /ENRT))*(PJ(106)*AJG2+PJ(107)*(AJG2-1.0)+PJ(108)*(AJG2-4.0)+
+     /PJ(109)*(AJG2-9.0)+PJ(110)*(AJG2-16.)+PJ(111)*(AJG2-25.)+PJ(112)*
+     /(AJG2-36.)+PJ(113)*(AJG2-49.)+PJ(114)*(AJG2-64.)+PJ(115)*
+     /(AJG2-81.)+PJ(116)*(AJG2-100.)+PJ(117)*(AJG2-121.)+PJ(118)*(AJG2-
+     /144.)+PJ(119)*(AJG2-169.))/(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(27,I)=0.5+(QIN(27,I)-DRAT*QIN(27,I))/QIN(27,I)
+C 130-->140 +131-->141 +132-->142 +133-->143 +134-->144 +135-->145
+C +136-->146 +137-->147 +138-->148 +139-->149 +1310-->1410 +1311-->1411
+C +1312-->1412 +1313-->1413
+      AJ=13.0
+      AJG=14.0
+      AJG2=AJG*AJG
+      QIN(28,I)=0.0D0
+      IF(EN.LE.EIN(28)) GO TO 200
+      QIN(28,I)=DBK*LOG((ENRT+SQRT(EN-EIN(28)))/(ENRT-SQRT(EN-EIN(28)
+     /)))*(PJ(92)*AJG2+PJ(93)*(AJG2-1.0)+PJ(94)*(AJG2-4.0)+PJ(95)*(AJG2-
+     /9.0)+PJ(96)*(AJG2-16.0)+PJ(97)*(AJG2-25.0)+PJ(98)*(AJG2-36.)+
+     /PJ(99)*(AJG2-49.)+PJ(100)*(AJG2-64.)+PJ(101)*(AJG2-81.)+PJ(102)*
+     /(AJG2-100.)+PJ(103)*(AJG2-121.)+PJ(104)*(AJG2-144.)+PJ(105)*
+     /(AJG2-169.))/(AJG*(2.0*AJ+1.0)*EN)
+      PEQIN(28,I)=0.5+(QIN(28,I)-DRAT*QIN(28,I))/QIN(28,I)
+C
+C  SUPERELASTIC V2
+C
+  200 QIN(29,I)=0.0D0
+      IF(EN.LE.0.0) GO TO 250
+      EFAC=SQRT(1.0-(EIN(29)/EN))
+      QIN(29,I)=0.195*LOG((EFAC+1.0)/(EFAC-1.0))/EN
+      DO 220 J=2,NVIBH
+      IF((EN+EIN(30)).LE.XVIBH(J)) GO TO 230
+  220 CONTINUE
+      J=NVIBH
+  230 A=(YVIBH(J)-YVIBH(J-1))/(XVIBH(J)-XVIBH(J-1))
+      B=(XVIBH(J-1)*YVIBH(J)-XVIBH(J)*YVIBH(J-1))/(XVIBH(J-1)-XVIBH(J))
+      QIN(29,I)=QIN(29,I)+0.25*(EN+EIN(30))*(A*(EN+EIN(30))+B)/EN
+      QIN(29,I)=QIN(29,I)*APOPV2/(1.0+APOPV2)*1.D-16
+C    V2
+  250 QIN(30,I)=0.0D0
+      IF(EN.LE.EIN(30)) GO TO 300
+      EFAC=SQRT(1.0-(EIN(30)/EN))
+      QIN(30,I)=0.195*LOG((1.0+EFAC)/(1.0-EFAC))/EN
+      DO 270 J=2,NVIBH
+      IF(EN.LE.XVIBH(J)) GO TO 280
+  270 CONTINUE
+      J=NVIBH
+  280 A=(YVIBH(J)-YVIBH(J-1))/(XVIBH(J)-XVIBH(J-1))
+      B=(XVIBH(J-1)*YVIBH(J)-XVIBH(J)*YVIBH(J-1))/(XVIBH(J-1)-XVIBH(J))
+      QIN(30,I)=QIN(30,I)+0.25*(A*EN+B)
+      QIN(30,I)=QIN(30,I)/(1.0+APOPV2)*1.D-16
+C  V4
+  300 QIN(31,I)=0.0D0
+      IF(EN.LE.EIN(31)) GO TO 400
+      EFAC=SQRT(1.0-(EIN(31)/EN))
+      QIN(31,I)=0.182*LOG((1.0+EFAC)/(1.0-EFAC))/EN
+      DO 310 J=2,NVIBH
+      IF(EN.LE.XVIBH(J)) GO TO 320
+  310 CONTINUE
+      J=NVIBH
+  320 A=(YVIBH(J)-YVIBH(J-1))/(XVIBH(J)-XVIBH(J-1))
+      B=(XVIBH(J-1)*YVIBH(J)-XVIBH(J)*YVIBH(J-1))/(XVIBH(J-1)-XVIBH(J))
+      QIN(31,I)=(QIN(31,I)+0.52*(A*EN+B))*1.D-16
+  400 CONTINUE
+C  V1+V3
+      QIN(32,I)=0.0D0
+      IF(EN.LE.EIN(32)) GO TO 500
+      EFAC=SQRT(1.0-(EIN(32)/EN))
+      QIN(32,I)=0.182*LOG((1.0+EFAC)/(1.0-EFAC))/EN
+      DO 410 J=2,NVIBH
+      IF(EN.LE.XVIBH(J)) GO TO 420
+  410 CONTINUE
+      J=NVIBH
+  420 A=(YVIBH(J)-YVIBH(J-1))/(XVIBH(J)-XVIBH(J-1))
+      B=(XVIBH(J-1)*YVIBH(J)-XVIBH(J)*YVIBH(J-1))/(XVIBH(J-1)-XVIBH(J))
+      QIN(32,I)=(QIN(32,I)+1.10*(A*EN+B))*1.D-16
+  500 CONTINUE
+C HARMONICS (2V1,2V1+V4,3V1, ETC )
+      QIN(33,I)=0.0D0
+      IF(EN.LE.EIN(33)) GO TO 600
+      DO 510 J=2,NVIBH
+      IF(EN.LE.XVIBH(J)) GO TO 520
+  510 CONTINUE
+      J=NVIBH
+  520 A=(YVIBH(J)-YVIBH(J-1))/(XVIBH(J)-XVIBH(J-1))
+      B=(XVIBH(J-1)*YVIBH(J)-XVIBH(J)*YVIBH(J-1))/(XVIBH(J-1)-XVIBH(J))
+      QIN(33,I)=0.165*(A*EN+B)*1.D-16
+  600 CONTINUE
+C
+      QIN(34,I)=0.0D0
+      IF(EN.LE.EIN(34)) GO TO 700
+      DO 610 J=2,NEXC1
+      IF(EN.LE.XEXC1(J)) GO TO 620
+  610 CONTINUE
+      J=NEXC1
+  620 A=(YEXC1(J)-YEXC1(J-1))/(XEXC1(J)-XEXC1(J-1))
+      B=(XEXC1(J-1)*YEXC1(J)-XEXC1(J)*YEXC1(J-1))/(XEXC1(J-1)-XEXC1(J))
+      QIN(34,I)=(A*EN+B)*1.D-16
+  700 CONTINUE
+      SUM=0.0D0
+      DO 750 K=1,28
+  750 SUM=SUM+QIN(K,I)
+C---------------------------------------------------------------------
+C    SUBTRACT ROTATIONAL MT  XSEC TO GET CORRECT ELASTIC MT XSEC.
+C
+      Q(2,I)=Q(2,I)-SUM*DRAT
+C-----------------------------------------------------
+C  TOTAL XSEC (USED ONLY FOR INFORMATION)
+      Q(1,I)=Q(2,I)+Q(3,I)+Q(4,I)+QIN(29,I)+QIN(30,I)+
+     /QIN(31,I)+QIN(32,I)+QIN(33,I)+QIN(34,I)+SUM*DRAT
+  900 CONTINUE
+C  SAVE COMPUTE TIME
+      DO 1000 K=1,6
+      J=35-K
+      IF(EFINAL.LE.EIN(J)) NIN=J-1
+ 1000 CONTINUE
+C
+      END

@@ -1,0 +1,4 @@
+CDECK  ID>, GDSG.
+      SUBROUTINE GDSG(ISEG)
+      RETURN
+      END
