@@ -1,12 +1,26 @@
 #+TITLE: Build GARFIELD with waf
 
-The [[http://garfield.web.cern.ch/garfield/][Garfield simulation of gaseous detectors]] is built with an archaic set of tools, CERNLIB and a lot of added chaos.  This package tries to automate the building.  It includes a copy of the GARFIELD FORTRAN files and will download the neBEM code.
+The [[http://garfield.web.cern.ch/garfield/][Garfield simulation of gaseous detectors]] is built with an archaic
+set of tools, CERNLIB and a lot of added chaos.  This package tries to
+automate the building.  It includes a copy of the GARFIELD FORTRAN
+files and will download the neBEM code.
 
 * Installation
+
+General:
 
 #+BEGIN_EXAMPLE
 $ git clone https://github.com/brettviren/garfield-build.git
 $ cd garfield-build/
+$ waf --version
 $ waf configure build
 #+END_EXAMPLE
 
+On BNL's RACF, for now, one can build it by leveraging CERNLIB and GSL
+installed in various places using the provided =racf.sh" script.
+Clone as above and do:
+
+#+begin_example
+$ ./racf.sh waf configure build
+$ ./racf.sh garfield-9
+#+end_example
