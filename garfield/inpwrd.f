@@ -25,7 +25,7 @@ CDECK  ID>, INPWRD.
      -         MXMAP,MXEPS,MXWMAP,MXSOLI,MXSBUF,
      -         MXPLAN,MXPOIN,MXEDGE,
      -         MXMCA
-       PARAMETER (MXWIRE=  2000,MXSW  =  200)
+       PARAMETER (MXWIRE=   300,MXSW  =   50)
        PARAMETER (MXMATT=    10)
        PARAMETER (MX3D  =   100)
        PARAMETER (MXPOLE=    10)
@@ -53,7 +53,7 @@ CDECK  ID>, INPWRD.
        PARAMETER (MXEXG =    50, MXIOG =    10, MXCSG =  200)
        PARAMETER (MXORIA=  1000)
        PARAMETER (MXSHOT=    10, MXZPAR=4*MXSHOT+2)
-       PARAMETER (MXMAP =350000,MXEPS =   10)
+       PARAMETER (MXMAP =  5000,MXEPS =   10)
        PARAMETER (MXWMAP=     5)
        PARAMETER (MXSOLI=  1000)
        PARAMETER (MXPLAN= 50000, MXPOIN=100000,MXEDGE=100)
@@ -338,7 +338,8 @@ C            CALL ALGCLR(IENTRY)
 *** Check for help lines, starting with ?.
        ELSEIF(NWORD.GE.1.AND.(LINE(1:1).EQ.'?'.OR.INPCMP(1,'HELP')+
      -      INPCMP(1,'INFO#RMATION').NE.0))THEN
-            CALL HLPINP
+            PRINT *,' !!!!!! INPWRD WARNING : The help subsection'//
+     -           ' has not been compiled; no help available.'
 *** Graphics options are lines starting with a !.
        ELSEIF(NWORD.GE.1.AND.LINE(1:1).EQ.'!')THEN
             CALL GRAINP

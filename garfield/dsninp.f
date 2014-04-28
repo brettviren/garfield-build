@@ -27,7 +27,7 @@ CDECK  ID>, DSNINP.
      -         MXMAP,MXEPS,MXWMAP,MXSOLI,MXSBUF,
      -         MXPLAN,MXPOIN,MXEDGE,
      -         MXMCA
-       PARAMETER (MXWIRE=  2000,MXSW  =  200)
+       PARAMETER (MXWIRE=   300,MXSW  =   50)
        PARAMETER (MXMATT=    10)
        PARAMETER (MX3D  =   100)
        PARAMETER (MXPOLE=    10)
@@ -55,7 +55,7 @@ CDECK  ID>, DSNINP.
        PARAMETER (MXEXG =    50, MXIOG =    10, MXCSG =  200)
        PARAMETER (MXORIA=  1000)
        PARAMETER (MXSHOT=    10, MXZPAR=4*MXSHOT+2)
-       PARAMETER (MXMAP =350000,MXEPS =   10)
+       PARAMETER (MXMAP =  5000,MXEPS =   10)
        PARAMETER (MXWMAP=     5)
        PARAMETER (MXSOLI=  1000)
        PARAMETER (MXPLAN= 50000, MXPOIN=100000,MXEDGE=100)
@@ -126,15 +126,15 @@ CDECK  ID>, DSNINP.
 *** Prepare a help file if the command is PACK-HELP-FILE.
        IF(INPCMP(1,'%PAC#K-H#ELP-#FILE')+INPCMP(2,'PAC#K-H#ELP-#FILE')
      -      .NE.0)THEN
-            CALL HLPPAC(IFAIL)
-            IF(IFAIL.NE.0)PRINT *,' !!!!!! DSNINP WARNING : Packed'//
-     -           ' help file not produced.'
+            PRINT *,' !!!!!! DSNINP WARNING : The help section has'//
+     -           ' not been compiled; command ignored.'
             GOTO 1020
        ENDIF
 *** Dump the help file if the command is DUMP-HELP-FILE.
        IF(INPCMP(1,'%DUMP-H#ELP-#FILE')+INPCMP(2,'DUMP-H#ELP-#FILE')
      -      .NE.0)THEN
-            CALL HLPDEB
+            PRINT *,' !!!!!! DSNINP WARNING : The help section has'//
+     -           ' not been compiled; command ignored.'
             GOTO 1020
        ENDIF
 *** Set the position of the command.
