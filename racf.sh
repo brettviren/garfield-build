@@ -14,7 +14,7 @@ export CERN=/cern64
 export CERN_LEVEL=pro
 export PKG_CONFIG_PATH=$gslroot/lib/pkgconfig:$CERN/$CERN_LEVEL/bin
 export LD_LIBRARY_PATH=$mydir/build:$gslroot/lib
-PATH=$mydir/build:$PATH:$CERN/$CERN_LEVEL/bin
+PATH=$mydir/build:$PATH:$CERN/$CERN_LEVEL/bin:/cern/pro/bin
 
 
 if [ -n "$1" ] ; then

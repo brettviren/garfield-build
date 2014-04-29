@@ -1,0 +1,77 @@
+--- Makefile	2014-04-28 20:06:40.000000000 -0400
++++ Makefile.mod	2014-04-28 19:47:39.000000000 -0400
+@@ -10,9 +10,10 @@
+ # ----
+ FC = gfortran
+ LF= `cernlib graflib/X11,kernlib,mathlib,packlib`
+-BINDIR=.@sys
+-BEMDIR = /afs/cern.ch/user/r/rjd/Garfield/Files/neBEM/V1.8.12
++BINDIR = bin
++BEMDIR = V1.8.13
+ FF = -O3 -fbounds-check -fbackslash # -Wuninitialized 
++GSLIBS = `pkg-config gsl --libs`
+ 
+ relink-9: $(BEMDIR)/obj/neBEM.o
+ 	$(FC) -o $(BINDIR)/garfield-9 *.o \
+@@ -21,12 +22,12 @@
+ 	$(BEMDIR)/obj/neBEM.o \
+ 	$(LF) -std=c99 \
+ 	-Iinclude -L$(BEMDIR)/lib \
+-        -lNR -lVector -lIsles -lgslcblas -lgsl -lm -lgfortran
++        -lNR -lVector -lIsles $(GSLIBS) -lgfortran
+ 
+ new-9: $(BEMDIR)/obj/neBEM.o
+ 	-rm *.f
+ 	./patchy_step garfadd-9
+-	/cern/pro/bin/fcasplit garfadd-9.f
++	fcasplit garfadd-9.f
+ 	-rm garfadd-9.f garfadd-9.mkfca garfadd-9.shfca y.lis
+ 	$(FC) -c $(FF) *.f
+ 	rm *.f
+@@ -36,7 +37,7 @@
+ 	$(BEMDIR)/obj/neBEM.o \
+ 	$(LF) -std=c99 \
+ 	-Iinclude -L$(BEMDIR)/lib \
+-        -lNR -lVector -lIsles -lgslcblas -lgsl -lm
++        -lNR -lVector -lIsles $(GSLIBS)
+ 
+ garfield-9: main-9.o
+ 	$(FC) -o $(BINDIR)/garfield-9 *.o \
+@@ -45,7 +46,7 @@
+ 	$(BEMDIR)/obj/neBEM.o \
+ 	$(LF) -std=c99 \
+ 	-Iinclude -L$(BEMDIR)/lib \
+-        -lNR -lVector -lIsles -lgslcblas -lgsl -lm
++        -lNR -lVector -lIsles $(GSLIBS)
+ 	#rm *.o
+ 
+ main-9.o: main-9.f
+@@ -53,8 +54,8 @@
+ 	rm *.f
+ 
+ main-9.f: garfield-9.f
+-	/cern/pro/bin/fcasplit garfield-9.f
+-	/cern/pro/bin/fcasplit garfadd-9.f
++	fcasplit garfield-9.f
++	fcasplit garfadd-9.f
+ 	-rm garfield-9.f garfield-9.mkfca garfield-9.shfca y.lis
+ 	-rm garfadd-9.f garfadd-9.mkfca garfadd-9.shfca y.lis
+ 	mv main.f main-9.f
+@@ -67,7 +68,7 @@
+ garfboinc-9: garfield-7.car magboltz-7.car heed101garf.car
+ 	-rm *.f *.o
+ 	./patchy_step garfboinc-9
+-	/cern/pro/bin/fcasplit garfboinc-9.f
++	fcasplit garfboinc-9.f
+ 	-rm garfboinc-9.f garfboinc-9.mkfca garfboinc-9.shfca y.lis
+ 	$(FC) -c $(FF) -fno-second-underscore *.f
+ 	rm *.f
+@@ -83,7 +84,7 @@
+ 
+ interface.f: garfield-7.car interface.cra
+ 	-rm interface.f
+-	patchy_step interface
++	./patchy_step interface
+ 	-rm y.lis
+ 
+ interface.a: interface.f

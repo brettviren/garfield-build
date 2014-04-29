@@ -7,6 +7,26 @@ files and will download the neBEM code.
 
 * Installation
 
+A simple shell script that downloads everything, applies a coupld of
+patches and exercises the native installation:
+
+#+BEGIN_EXAMPLE
+$ ./native.sh path/to/build/tmp
+#+END_EXAMPLE
+
+It requires that =pkg-config= can find GSL and the =cernlib= and
+=ypatchy= are in your =$PATH=.
+
+** RACF
+
+When building on RACF you can satisfy the prerequisites by running the script through the provided [[./racf.sh]]:
+
+#+BEGIN_EXAMPLE
+$ ./racf.sh ./native.sh path/to/build/tmp
+#+END_EXAMPLE
+
+* Waf-based
+
 General:
 
 #+BEGIN_EXAMPLE
