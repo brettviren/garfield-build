@@ -5,6 +5,34 @@ set of tools, CERNLIB and a lot of added chaos.  This package tries to
 automate the building.  It includes a copy of the GARFIELD FORTRAN
 files and will download the neBEM code.
 
+* On Ubuntu
+
+#+BEGIN_EXAMPLE
+  $ sudo apt-get install cernlib-core-dev libgsl-dev
+  $ ./waf-1.7.16 configure --prefix=install
+  $ ./waf-1.7.16
+  $ ./waf-1.7.16 install
+  $ export LD_LIBRARY_PATH=`pwd`/install/lib
+  $ export PATH=`pwd`/install/bin:$PATH
+  $ garfield-9 
+#+END_EXAMPLE
+
+Adjust =--prefix= as desired.
+
+** Problems
+
+I get this error, dunno if it's real
+#+BEGIN_EXAMPLE
+  $ garfield-9 
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  LOCB/LOCF: address 0x7f9a10d6aee0 exceeds the 32 bit address space
+  or is not in the data segments
+  This may result in program crash or incorrect results
+  Therefore we will stop here
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#+END_EXAMPLE
+
+
 * Installation
 
 A simple shell script that downloads everything, applies a coupld of

@@ -36,7 +36,7 @@ def configure(cfg):
     if cfg.env.FC_NAME == 'GFORTRAN':
         cfg.env['FCFLAGS'] = '-O3 -fbounds-check -fbackslash'.split()
 
-    cfg.check_cfg(package = 'gsl', args=['--cflags', '--libs'])
+    cfg.check_cfg(package = 'gsl', args=['--cflags', '--libs'], mandatory=True)
 
     cfg.check_fortran()
     cfg.check_fortran_verbose_flag()
@@ -115,7 +115,7 @@ def build(bld):
         fcflags = ['-O3', '-fbounds-check', '-fbackslash'],
         source   = 'main.f',
         target   = 'garfield-9',
-        lib = bld.env.LIB_GSL + bld.env.LIB_CERN + ['Isles'],
+        lib =  ['Isles'] + bld.env.LIB_GSL + bld.env.LIB_CERN,
         libpath = bld.env.LIBPATH_GSL + bld.env.LIBPATH_CERN + [isles_lib.abspath()],
         linkflags = ['-std=c99','-Wl,-Bstatic'],
         #use  = ['garfadd','garfield','garfint','nebemlib'])
