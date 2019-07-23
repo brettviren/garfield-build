@@ -34,9 +34,10 @@ def configure(cfg):
     #cfg.find_program('cernlib', var='CERNLIBSCRIPT', path_list=cernpath)
 
     if cfg.env.FC_NAME == 'GFORTRAN':
-        cfg.env['FCFLAGS'] = '-O3 -fbounds-check -fbackslash'.split()
+        cfg.env['FCFLAGS'] = '-fbounds-check -fbackslash'.split()
 
-    cfg.check_cfg(package = 'gsl', args=['--cflags', '--libs'], mandatory=True)
+    cfg.check_cfg(package = 'gsl', args=['--cflags', '--libs'], mandatory=True, uselib_store='GSL')
+    #cfg.env.LINKFLAGS_GSL = ['-Wl,-Bstatic']
 
     cfg.check_fortran()
     cfg.check_fortran_verbose_flag()
@@ -64,6 +65,7 @@ def configure(cfg):
     cfg.env.LINKFLAGS_CERN = linkflags_cern
     cfg.env.LIB_CERN = lib_cern + cfg.env.LIB_CERN
     cfg.env.LIBPATH_CERN = libpath_cern + cfg.env.LIBPATH_CERN
+    #print cfg.env
 
     #clibs = subprocess.Popen([cfg.env.CERNLIBSCRIPT, 'graflib/X11,kernlib,mathlib,packlib'],
     # stdout=subprocess.PIPE).communicate()[0]
@@ -83,19 +85,33 @@ def configure(cfg):
 
 
 def build(bld):
+    # fixme: make opt/debug a CLI option
 
-    bld.shlib(target = 'nebemlib', 
-              includes = ['V1.8.13/include'] +bld.env.INCLUDES_GSL,
-              cflags = ['-Wall', '-std=c99', '-O3'],
-              source = bld.path.ant_glob([
+    bld.env.LINKFLAGS_GSL = ['-Wl,-Bstatic']
+
+
+    # note: garfield and nebem have a cyclic dependency....
+
+    garsrc = bld.path.ant_glob('garfield/*.f')
+    # bld(features = 'fc fcstlib',
+    #     fcflags = ['-g', '-fbounds-check', '-fbackslash'],
+    #     linkflags = ['-std=c99', '-Wl,-Bstatic'],
+    #     source   = garsrc,
+    #     target   = 'garfield')
+
+
+    nebemsrc = bld.path.ant_glob([
                   'V1.8.13/src/NR/*.c',
                   'V1.8.13/src/Solve/*.c',
                   'V1.8.13/src/Interface/GarfieldInterface.c',
                   'V1.8.13/src/Interface/neBEMInterface.c',
                   'V1.8.13/src/PreProcess/ReTriM.c',
                   'V1.8.13/src/Vector/Vector.c',
-                  ]))
-
+                  ])
+    bld.stlib(target = 'nebemlib', 
+              includes = ['V1.8.13/include'] +bld.env.INCLUDES_GSL,
+              cflags = ['-g', '-Wall', '-std=c99'],
+              source = nebemsrc)
 
     # for what in ['ield','add','int']:
     #     bld(features = 'fc fcstlib',
@@ -104,19 +120,18 @@ def build(bld):
     #         source   = bld.path.ant_glob('garf%s/*.f'%what),
     #         target   = 'garf'+what)
 
-    bld(features = 'fc fcshlib',
-        fcflags = ['-O3', '-fbounds-check', '-fbackslash'],
-        linkflags = ['-std=c99', '-Wl,-Bstatic'],
-        source   = bld.path.ant_glob('garfield/*.f'),
-        target   = 'garfield')
-
     isles_lib = bld.path.find_node('V1.8.13/lib')
     bld(features = 'fc fcprogram',
-        fcflags = ['-O3', '-fbounds-check', '-fbackslash'],
-        source   = 'main.f',
+        fcflags = ['-g', '-fbounds-check', '-fbackslash'],
+        includes = ['V1.8.13/include'] +bld.env.INCLUDES_GSL,
+        source   = ['main.f'] + garsrc,
         target   = 'garfield-9',
-        lib =  ['Isles'] + bld.env.LIB_GSL + bld.env.LIB_CERN,
-        libpath = bld.env.LIBPATH_GSL + bld.env.LIBPATH_CERN + [isles_lib.abspath()],
-        linkflags = ['-std=c99','-Wl,-Bstatic'],
+        #lib =  ['Isles'] + bld.env.LIB_GSL + bld.env.LIB_CERN,
+        #libpath = bld.env.LIBPATH_GSL + bld.env.LIBPATH_CERN + [isles_lib.abspath()],
+        lib =  ['Isles'],
+        libpath = [isles_lib.abspath()],
+        linkflags = ['-std=c99'],
         #use  = ['garfadd','garfield','garfint','nebemlib'])
-        use  = ['garfield','nebemlib'])
+        use  = ['garfield','nebemlib','garfield','GSL','CERN']
+    )
+

@@ -6,8 +6,9 @@ waf () {
     $mydir/waf-1.7.16 $@
 }
 
-# take from astro build
-gslroot=/afs/rhic.bnl.gov/opt/astro/SL64
+# Install GSL by hand
+gslroot=/gpfs01/lbne/users/sw/garfield
+
 
 #export CERN=/afs/rhic.bnl.gov/asis/x8664_sl5/cern64
 export CERN=/cern64
