@@ -158,8 +158,6 @@ def build(bld):
         'Vector/Vector.c',
     ]) if not s.name.startswith('test')]
 
-    print(f'{nebemsrcs=}')
-
     nebem_inc = nebem_dir.find_node("include")
     bld.stlib(target = 'nebemlib', 
               features='c cstlib',

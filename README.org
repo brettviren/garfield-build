@@ -1,77 +1,88 @@
 #+TITLE: Build GARFIELD with waf
 
-The [[http://garfield.web.cern.ch/garfield/][Garfield simulation of gaseous detectors]] is built with an archaic
-set of tools, CERNLIB and a lot of added chaos.  This package tries to
-automate the building.  It includes a copy of the GARFIELD FORTRAN
-files and will download the neBEM code.
+The [[http://garfield.web.cern.ch/garfield/][Garfield simulation of gaseous detectors]] is built with an archaic set of
+tools and libraries.  This package tries its best to build the "garfield-9"
+executable.
 
-* On Ubuntu
+* Caveat
 
-#+BEGIN_EXAMPLE
-  $ sudo apt-get install cernlib-core-dev libgsl-dev
-  $ ./waf-1.7.16 configure --prefix=install
-  $ ./waf-1.7.16
-  $ ./waf-1.7.16 install
-  $ export LD_LIBRARY_PATH=`pwd`/install/lib
-  $ export PATH=`pwd`/install/bin:$PATH
-  $ garfield-9 
-#+END_EXAMPLE
+I have almost no understanding of the internals of Garfield and neBEM codes.
+This build simply tries to complete and give a running executable.  If you do
+have a clue and you see something stupid here, please tell me.
 
-Adjust =--prefix= as desired.
+* Prerequisites
 
-** Problems
+** Compiler
 
-I get this error, dunno if it's real
-#+BEGIN_EXAMPLE
-  $ garfield-9 
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  LOCB/LOCF: address 0x7f9a10d6aee0 exceeds the 32 bit address space
-  or is not in the data segments
-  This may result in program crash or incorrect results
-  Therefore we will stop here
-  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#+END_EXAMPLE
+Fortran (~gfotran~) and C (~gcc~) compilers are needed.
 
+** Install GNU scientific library
 
-* Installation
-
-A simple shell script that downloads everything, applies a coupld of
-patches and exercises the native installation:
-
-#+BEGIN_EXAMPLE
-$ ./native.sh path/to/build/tmp
-#+END_EXAMPLE
-
-It requires that =pkg-config= can find GSL and the =cernlib= and
-=ypatchy= are in your =$PATH=.
-
-** RACF
-
-When building on RACF you can satisfy the prerequisites by running the script through the provided [[./racf.sh]]:
-
-#+BEGIN_EXAMPLE
-$ ./racf.sh ./native.sh path/to/build/tmp
-#+END_EXAMPLE
-
-* Waf-based
-
-General:
-
-#+BEGIN_EXAMPLE
-$ git clone https://github.com/brettviren/garfield-build.git
-$ cd garfield-build/
-$ waf --version  # one time unpacking of waf
-$ waf configure build
-#+END_EXAMPLE
-
-On BNL's RACF, for now, one can build it by leveraging CERNLIB and GSL
-installed in various places using the provided =racf.sh" script.
-Clone as above and do:
+Run,
 
 #+begin_example
-$ git clone https://github.com/brettviren/garfield-build.git
-$ cd garfield-build/
-$ ./racf.sh waf --version  # one time unpacking of waf
-$ ./racf.sh waf configure build
-$ ./racf.sh garfield-9
+$ sudo apt install libgsl-dev
 #+end_example
+
+or equivalent for your OS.
+
+** CERNLIB
+
+Download a recent "Community CERNLIB sources" from:
+
+https://cernlib.web.cern.ch/version.html
+
+Unpack and cd to the source and:
+
+#+begin_example
+$ mkdir biuld
+$ cd build
+$ cmake ..
+$ make -j12
+$ cmake --install . --prefix ~/opt/cernlib
+#+end_example
+
+With the modern CMake, this builds easy and fast.  Kudos those keeping this venerable package alive! 
+
+Wherever you install it, make sure its the bin directory is in your path.
+
+* Configure the build
+
+#+begin_example
+$ ./waf conigure
+#+end_example
+
+This will first attempt to download the ~neBEM~ source distribution from CERN.  At
+the time of writing, accessing the URL requires CERN auth.  If ~waf~ fails to
+download it, visit the URL in a browser and supply some auth that CERN accepts
+and place the tar file in the main directory.  If you want get a different
+version, edit ~nebem_version~ string in the ~wscript~ file.
+
+The ~neBEM~ source distribution also includes ~libIsles.a~ which will be used.  The
+other Isles libs and ~libNR.a~ and ~libVector.a~ libraries are ignored.
+
+The ~./waf configure~ command must succeed before going on to the build.
+
+* Building
+
+#+begin_example
+$ ./waf --prefix=$HOME/opt/garfield configure
+#+end_example
+
+Or, pick your favorite prefix.  Or, leave off the prefix.  The only final build
+product is the ~garfield-9~ executable binary.  You can just as well do:
+
+#+begin_example
+$ cp build/garfield-9 $HOME/bin/  # or whatever
+#+end_example
+
+* Running ~garfield-9~
+
+This is mostly out of scope for the ~garfield-build~ package but a brief primer.
+Procure some ~.gar~ files with a main ~track.gar~ which you can field to stdin:
+
+#+begin_example
+$ garfield-9 < track.gar
+#+end_example
+
+Or, run interactively for X11 display and type ~<track.gar~ at the prompt.
