@@ -1,5 +1,7 @@
 #+TITLE: Build GARFIELD with waf
 
+*WARNING* This builds ~garfield-9~ but there are segfaults.  Save yourself pain and suffering and do not try to use this.
+
 The [[http://garfield.web.cern.ch/garfield/][Garfield simulation of gaseous detectors]] is built with an archaic set of
 tools and libraries.  This package tries its best to build the "garfield-9"
 executable.
